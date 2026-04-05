@@ -72,7 +72,7 @@
       - The right iframe panel fills whatever space remains
       */
       --left-w:  260px;
-      --map-w:   420px;
+      --map-w:   620px;
     }
 
     *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2264,14 +2264,14 @@
       {
         icon:     "✈",
         title:    "Welcome to the USAF AFSC Navigator",
-        body:     "This tool helps you explore <strong>Air Force Specialty Codes (AFSCs)</strong> and the bases where they are assigned.<br><br>Use the selectors on the left, the interactive map, or both to find information. This short tour will show you how.",
+        body:     "This tool helps you explore <strong>Air Force Specialty Codes (AFSCs)</strong>, airframes, and the bases where they are assigned.<br><br>Use the selectors on the left or the interactive map to find information. This short tour will show you how.",
         target:   null,
         position: "center"
       },
       {
         icon:     "🏠",
         title:    "Select a Base",
-        body:     "Use the <strong>Select Base</strong> dropdown to choose a specific installation.<br><br>The map will fly to that base, the content panel loads the base overview page, and the AFSC dropdown narrows to only AFSCs assigned there.",
+        body:     "Use the <strong>Select Base</strong> dropdown to choose a specific installation.<br><br>The map will fly to that base, the content panel generates a link to the base's website, and the AFSC dropdown narrows to only AFSCs assigned there.",
         target:   "base-select",
         position: "right"
       },
@@ -2285,7 +2285,7 @@
       {
         icon:     "📍",
         title:    "Use the Map Pins",
-        body:     "<strong>Click any orange pin</strong> on the map to select that base directly.<br><br>A popup lists every AFSC at that base. <strong>Click any AFSC in the popup</strong> to select it and load its content instantly.",
+        body:     "<strong>Click any orange pin</strong> on the map to select that base directly.<br><br>A popup lists every AFSC at that base. <strong>Click any AFSC in the popup</strong> to load its content.",
         target:   "map-view",
         position: "right"
       },
@@ -2304,7 +2304,7 @@
       {
         icon:     "↔",
         title:    "Resize the Map",
-        body:     "See the <strong>thin vertical bar</strong> between the map and content panel?<br><br><strong>Click and drag it</strong> left or right to make the map wider or narrower. The content panel adjusts automatically.",
+        body:     "See the <strong>thin vertical bar</strong> between the map and content panel?<br><br><strong>Click and drag it</strong> left or right to make the map wider or narrower.",
         target:   "drag-handle",
         position: "left"
       },
@@ -2323,7 +2323,7 @@
 <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,69,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#e8edf5;">Orange-red</strong> — No selection active. All bases shown at default.</span>
+    <span><strong style="color:#e8edf5;">Orange</strong> — No selection active. All bases shown at default.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,204,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
@@ -2331,15 +2331,15 @@
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,140,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#e8edf5;">Bright orange</strong> — This base has the selected AFSC assigned.</span>
+    <span><strong style="color:#e8edf5;">Bright orange</strong> — This base has the selected AFSC.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,255,255);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.3);"></div>
-    <span><strong style="color:#e8edf5;">White</strong> — You clicked this base while an AFSC filter is active. Other matching bases stay orange.</span>
+    <span><strong style="color:#e8edf5;">White</strong> — You clicked this base while an AFSC filter is active. Other matching bases stay bright-orange.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:10px;height:10px;border-radius:50%;background:rgba(255,69,0,0.2);flex-shrink:0;margin-left:2px;"></div>
-    <span><strong style="color:#e8edf5;">Faded/dim</strong> — This base does not have the selected AFSC assigned.</span>
+    <span><strong style="color:#e8edf5;">Faded/dim</strong> — This base does not have the selected AFSC.</span>
   </div>
 </div>`,
         target:   "map-view",
