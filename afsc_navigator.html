@@ -1174,7 +1174,7 @@
 
       <div class="loading-bar" id="loading-bar"></div>
       <div class="iframe-placeholder" id="placeholder">
-        <div class="placeholder-icon">✈</div>
+        <div class="placeholder-icon">=✪=</div>
         <div class="placeholder-text">Select a Base or AFSC to load content</div>
       </div>
       <iframe id="content-frame" title="AFSC Content"></iframe>
@@ -1224,10 +1224,10 @@
     PIN COLORS
     TO CUSTOMIZE: change these hex values to match your preferred pin colors
     */
-    const PIN_DEFAULT_COLOR       = [255, 0,  0,  0.85]; /* red — default all pins */
-    const PIN_SELECTED_COLOR      = [255, 204, 0,  1.0];  /* yellow — selected base, no AFSC filter */
-    const PIN_FILTERED_COLOR      = [255, 140, 0,  0.9];  /* bright orange — matches AFSC filter */
-    const PIN_SELECTED_FILTERED   = [255, 255, 255, 1.0]; /* white — selected base WHILE AFSC filter active */
+    const PIN_DEFAULT_COLOR       = [185, 28, 28,  1.0]; /* red — default all pins */
+    const PIN_SELECTED_COLOR      = [255, 255, 255,  1.0];  /* white — selected base, no AFSC filter */
+    const PIN_FILTERED_COLOR      = [234, 88, 12,  1.0];  /* orange — matches AFSC filter */
+    const PIN_SELECTED_FILTERED   = [250, 204, 21, 1.0]; /* yellow — selected base WHILE AFSC filter active */
     /*
     CUSTOMIZE pin colors above:
     - PIN_DEFAULT_COLOR:     all pins when nothing is selected
@@ -2262,7 +2262,7 @@
     */
     const tourSteps = [
       {
-        icon:     "✈",
+        icon:     "=✪=",
         title:    "Welcome to the USAF AFSC Navigator",
         body:     "This tool helps you explore <strong>Air Force Specialty Codes (AFSCs)</strong>, airframes, and the bases where they are assigned.<br><br>Use the selectors on the left or the interactive map to find information. This short tour will show you how.",
         target:   null,
@@ -2276,7 +2276,7 @@
         position: "right"
       },
       {
-        icon:     "🎖",
+        icon:     "🪖",
         title:    "Select an AFSC",
         body:     "Use the <strong>Select AFSC</strong> dropdown to filter by a specialty code.<br><br>The base dropdown narrows to only bases with that AFSC. The content panel loads the AFSC information page.",
         target:   "afsc-select",
@@ -2322,24 +2322,24 @@
         body:     `The pin colors tell you what each base represents at a glance:<br><br>
 <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
   <div style="display:flex;align-items:center;gap:12px;">
-    <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,69,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#ff0000;">Red</strong> — No selection active. All bases shown at default.</span>
+    <div style="width:14px;height:14px;border-radius:50%;background:rgb(255, 255, 255);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
+    <span><strong style="color:#e8edf5;">White</strong> — This base is selected (no AFSC filter active).</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,204,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#e8edf5;">Yellow</strong> — This base is selected (no AFSC filter active).</span>
+    <div style="width:14px;height:14px;border-radius:50%;background:rgb(250, 204, 21);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
+    <span><strong style="color:#e8edf5;">Yellow</strong> — You clicked this base while an AFSC filter is active. Other matching bases stay orange.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,140,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#e8edf5;">Bright orange</strong> — This base has the selected AFSC.</span>
+    <div style="width:14px;height:14px;border-radius:50%;background:rgb(234, 88, 12);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
+    <span><strong style="color:#e8edf5;">Orange</strong> — This base has the selected AFSC.</span>
+  </div>
+<div style="display:flex;align-items:center;gap:12px;">
+    <div style="width:14px;height:14px;border-radius:50%;background:rgb(185, 28, 28);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
+    <span><strong style="color:#e8edf5;">Red</strong> — No selection active. All bases shown at default.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
-    <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,255,255);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.3);"></div>
-    <span><strong style="color:#e8edf5;">White</strong> — You clicked this base while an AFSC filter is active. Other matching bases stay bright-orange.</span>
-  </div>
-  <div style="display:flex;align-items:center;gap:12px;">
-    <div style="width:10px;height:10px;border-radius:50%;background:rgba(255,69,0,0.2);flex-shrink:0;margin-left:2px;"></div>
-    <span><strong style="color:#e8edf5;">Faded/dim</strong> — This base does not have the selected AFSC.</span>
+    <div style="width:14px;height:14px;border-radius:50%;background:rgba(255, 69, 0, 0.2);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
+    <span><strong style="color:#e8edf5;">Muted Red</strong> — This base does not have the selected AFSC.</span>
   </div>
 </div>`,
         target:   "map-view",
