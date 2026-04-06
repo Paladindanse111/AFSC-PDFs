@@ -53,7 +53,7 @@
       --accent:        #1e5fa8;
       --accent-hover:  #2471c8;
       --accent-glow:   rgba(30, 95, 168, 0.35);
-      --pin-color:     #ff4500;   /* CUSTOMIZE: orange-red to match your dashboard pins */
+      --pin-color:     #ff0000;   /* CUSTOMIZE: red to match your dashboard pins */
       --pin-selected:  #ffcc00;   /* CUSTOMIZE: yellow highlight for selected pin */
       --text-primary:  #e8edf5;
       --text-muted:    #7a8aaa;
@@ -1224,7 +1224,7 @@
     PIN COLORS
     TO CUSTOMIZE: change these hex values to match your preferred pin colors
     */
-    const PIN_DEFAULT_COLOR       = [255, 69,  0,  0.85]; /* orange-red — default all pins */
+    const PIN_DEFAULT_COLOR       = [255, 0,  0,  0.85]; /* red — default all pins */
     const PIN_SELECTED_COLOR      = [255, 204, 0,  1.0];  /* yellow — selected base, no AFSC filter */
     const PIN_FILTERED_COLOR      = [255, 140, 0,  0.9];  /* bright orange — matches AFSC filter */
     const PIN_SELECTED_FILTERED   = [255, 255, 255, 1.0]; /* white — selected base WHILE AFSC filter active */
@@ -1563,7 +1563,7 @@
     Pin colors change based on the current selection:
     - Selected base: yellow/highlighted
     - Bases matching AFSC filter: brighter orange
-    - All other bases: standard orange-red
+    - All other bases: standard red
 
     Pins are clickable — clicking one selects that base.
     ================================================================
@@ -1609,7 +1609,7 @@
         if (isSelectedFiltered) {
           /*
           This base is selected AND an AFSC filter is active.
-          Show it in white so it stands out from the orange filtered pins,
+          Show it in white so it stands out from the red filtered pins,
           but all other matching pins stay visible and highlighted.
           CUSTOMIZE: change PIN_SELECTED_FILTERED color at the top.
           */
@@ -2285,9 +2285,9 @@
       {
         icon:     "📍",
         title:    "Use the Map Pins",
-        body:     "<strong>Click any orange pin</strong> on the map to select that base directly.<br><br>A popup lists every AFSC at that base. <strong>Click any AFSC in the popup</strong> to load its content.",
+        body:     "<strong>Click any red pin</strong> on the map to select that base directly.<br><br>A popup lists every AFSC at that base. <strong>Click any AFSC in the popup</strong> to load its content.",
         target:   "map-view",
-        position: "right"
+        position: "center-element"
       },
       {
         icon:     "🔀",
@@ -2323,7 +2323,7 @@
 <div style="display:flex;flex-direction:column;gap:10px;margin-top:4px;">
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,69,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
-    <span><strong style="color:#e8edf5;">Orange</strong> — No selection active. All bases shown at default.</span>
+    <span><strong style="color:#ff0000;">Red</strong> — No selection active. All bases shown at default.</span>
   </div>
   <div style="display:flex;align-items:center;gap:12px;">
     <div style="width:14px;height:14px;border-radius:50%;background:rgb(255,204,0);flex-shrink:0;box-shadow:0 0 0 2px rgba(255,255,255,0.15);"></div>
@@ -2343,7 +2343,7 @@
   </div>
 </div>`,
         target:   "map-view",
-        position: "above"
+        position: "center-element"
       },
       {
         /*
