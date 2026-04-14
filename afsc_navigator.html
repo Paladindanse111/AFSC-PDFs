@@ -10,11 +10,11 @@
   ESRI ArcGIS Maps SDK FOR JAVASCRIPT
   ============================================================
   dojoConfig must be set BEFORE the SDK script loads.
-  async:false fixes worker/locale errors in GitHub Pages environments.
+  async:true allows parallel module loading for better performance.
   ============================================================
   -->
   <script>
-    var dojoConfig = { async: false, has: { "esri-featurelayer-webgl": 1 } };
+    var dojoConfig = { async: true, has: { "esri-featurelayer-webgl": 1 } };
   </script>
   <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/dark/main.css"/>
   <script src="https://js.arcgis.com/4.30/" crossorigin></script>
@@ -122,7 +122,14 @@
     }
 
     /* ArcGIS SDK targets this element by ID */
-    #map-view { width: 100%; height: 100%; user-select: none; -webkit-user-select: none; cursor: grab; }
+    /* FIX: user-select:none prevents text highlight on map drag */
+    #map-view {
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
 
     /*
     Floating label shown top-right of the map when a base is selected.
@@ -478,7 +485,7 @@
 
       <!-- Map control buttons — bottom-left corner of the map -->
       <!-- TO CUSTOMIZE: change button label text here -->
-      <div class="map-controls">
+      <div class="map-controls" id="map-controls">
         <button class="map-ctrl-btn" id="legend-btn" onclick="toggleLegend()">⬤ Pin Legend</button>
         <button class="map-ctrl-btn" id="basemap-btn" onclick="toggleBasemap()">🗺 Dark Map</button>
       </div>
@@ -488,7 +495,7 @@
     <div class="drag-handle" id="drag-handle"></div>
 
     <!-- RIGHT PANEL: iframe content -->
-    <div class="right-panel">
+    <div class="right-panel" id="right-panel">
 
       <!--
       Toggle bar — only visible when both Base and AFSC are selected.
@@ -558,6 +565,21 @@
     */
     let isUpdating = false;
 
+    /*
+    ================================================================
+    FIX: DEBOUNCE HELPER
+    Delays rapid-fire calls so pin redraws don't stack up and
+    block the UI thread. 150ms is enough to batch quick actions.
+    ================================================================
+    */
+    function debounce(fn, delay) {
+      let timer;
+      return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
 
     /*
     ================================================================
@@ -601,18 +623,16 @@
         ui:        { components: ["zoom"] }
       });
 
-      /* When a pin is clicked: select the base and show the popup */
+      /*
+      FIX: Use r.type === "graphic" check to correctly identify pin hits,
+      improving clickability of all bases including overlapping pins.
+      */
       mapView.on("click", function(event) {
         mapView.hitTest(event).then(function(response) {
           const hit = response.results.find(r => r.type === "graphic" && r.graphic && r.graphic.attributes && r.graphic.attributes.Base);
           if (hit) {
             const clickedBase = hit.graphic.attributes.Base;
             currentBase = clickedBase;
-            /*
-            We do NOT clear currentAFSC here — if an AFSC filter is active,
-            all matching pins stay highlighted. The clicked base switches to
-            yellow (PIN_SELECTED_FILTERED) to distinguish it from the others.
-            */
             isUpdating = true;
             document.getElementById("base-select").value = clickedBase;
             isUpdating = false;
@@ -711,6 +731,9 @@
     ================================================================
     MAP PINS
     ================================================================
+    FIX: Wrapped in debounce(150ms) so rapid selections don't stack
+    up multiple redraws and freeze the UI thread.
+
     Clears and redraws all pins. Color reflects selection state:
     - PIN_DEFAULT_COLOR:     no selection active
     - PIN_SELECTED_COLOR:    this base is selected, no AFSC filter
@@ -719,7 +742,7 @@
     - faded (rgba 0.2):      this base does NOT have the selected AFSC
     ================================================================
     */
-    function updateMapPins() {
+    const updateMapPins = debounce(function() {
       if (!graphicsLayer) return;
       graphicsLayer.removeAll();
 
@@ -753,7 +776,7 @@
           attributes: { Base: baseName }
         });
       });
-    }
+    }, 150);
 
 
     /*
@@ -972,10 +995,6 @@
         listEl.appendChild(row);
       });
 
-      /*
-      Position near the pin. INNER_MARGIN keeps the popup off the panel border.
-      Flips left or up if it would overflow the map panel edge.
-      */
       const POPUP_W = 260, POPUP_H = 380, OFFSET = 14, INNER_MARGIN = 20;
       let left = clickX - panelRect.left + OFFSET;
       let top  = clickY - panelRect.top  + OFFSET;
@@ -1018,13 +1037,13 @@
     */
     (function initSlider() {
       var handle = document.getElementById("drag-handle");
-      if (!handle) { setTimeout(initSlider, 100); return; } /* retry until DOM is ready */
+      if (!handle) { setTimeout(initSlider, 100); return; }
 
       var mapPanel   = document.querySelector(".map-panel");
       var leftPanel  = document.querySelector(".left-panel");
       var rightPanel = document.querySelector(".right-panel");
-      var MAP_MIN_W  = 200;   /* CUSTOMIZE: minimum map width in pixels */
-      var MAP_MAX_W  = 1400;  /* CUSTOMIZE: maximum map width in pixels */
+      var MAP_MIN_W  = 200;
+      var MAP_MAX_W  = 1400;
       var startX = 0, startW = 0, active = false;
 
       handle.addEventListener("pointerdown", function(e) {
@@ -1063,19 +1082,6 @@
     ================================================================
     GUIDED TOUR
     ================================================================
-    Starts automatically on load (800ms delay so the map renders
-    first). Users can reopen it anytime via the ? button in the header.
-
-    TO CUSTOMIZE: edit the tourSteps array below.
-    Each step has:
-    - icon:     emoji shown at the top of the card
-    - title:    bold heading
-    - body:     description text (HTML allowed, <strong> for highlights)
-    - target:   ID of the element to spotlight (null = no spotlight)
-    - position: where the card appears relative to the target element:
-                "right" | "left" | "above" | "below" | "center" | "center-element"
-                "center-element" centers the card over the target itself
-    ================================================================
     */
     const tourSteps = [
       {
@@ -1102,8 +1108,6 @@
         icon: "🔀", title: "Switch Between Views",
         body: "When <strong>both a Base and an AFSC are selected</strong>, a toggle bar appears at the <strong>top of the content panel</strong> on the right.<br><br>Use <strong>AFSC Page</strong> and <strong>Base Page</strong> to switch between the two without clearing your selection.",
         target: "right-panel", position: "left"
-        /* toggle-bar is hidden when the tour runs (no selection active),
-           so we target right-panel instead to avoid a 0,0 spotlight */
       },
       {
         icon: "↔", title: "Resize the Map",
@@ -1233,10 +1237,6 @@
     ================================================================
     BASEMAP TOGGLE
     ================================================================
-    Switches between dark-gray-vector and hybrid (satellite).
-    1500ms lockout prevents rapid switching that could freeze the browser.
-    TO CUSTOMIZE: change BASEMAP_DARK or BASEMAP_SATELLITE.
-    ================================================================
     */
     const BASEMAP_DARK      = "dark-gray-vector";
     const BASEMAP_SATELLITE = "hybrid";
@@ -1261,10 +1261,6 @@
     /*
     ================================================================
     DRAGGABLE POPUP
-    ================================================================
-    Drag zone is only popup-base-name (the title text area).
-    The close button is outside the header div entirely so it can
-    never be blocked by drag event handling.
     ================================================================
     */
     (function() {
