@@ -631,7 +631,7 @@
       improving clickability of all bases including overlapping pins.
       */
       mapView.on("click", function(event) {
-        mapView.hitTest(event).then(function(response) {
+        mapView.hitTest(event, { tolerance: 12 }).then(function(response) {
           const hit = response.results.find(r => r.type === "graphic" && r.graphic && r.graphic.attributes && r.graphic.attributes.Base);
           if (hit) {
             const clickedBase = hit.graphic.attributes.Base;
