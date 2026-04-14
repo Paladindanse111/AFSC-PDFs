@@ -124,12 +124,15 @@
     /* ArcGIS SDK targets this element by ID */
     /* FIX: user-select:none prevents text highlight on map drag */
     #map-view {
-      width: 100%;
-      height: 100%;
-      user-select: none;
-      -webkit-user-select: none;
-      cursor: grab;
-    }
+  width: 100%;
+  height: 100%;
+  user-select: none;
+  -webkit-user-select: none;
+  -moz-user-select: none;
+  -ms-user-select: none;
+  cursor: grab;
+  touch-action: none;
+}
 
     /*
     Floating label shown top-right of the map when a base is selected.
