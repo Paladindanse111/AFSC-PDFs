@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>FRESNO YOSEMITE IAP &mdash; Wing Info</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    html, body { height: 100%; font-family: 'Segoe UI', system-ui, sans-serif; background: #0a0e1a; color: #e8edf5; display: flex; flex-direction: column; overflow: hidden; }
+    .topbar { flex-shrink: 0; height: 48px; background: #0f1524; border-bottom: 1px solid rgba(255,255,255,0.07); display: flex; align-items: center; gap: 12px; padding: 0 18px; }
+    .topbar-accent { width: 4px; height: 24px; background: #7c3aed; border-radius: 2px; }
+    .topbar-name   { font-size: 15px; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
+    .topbar-badge  { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; padding: 2px 8px; border-radius: 3px; background: rgba(124,58,237,0.15); color: #c4b5fd; border: 1px solid #7c3aed; }
+    .topbar-url    { margin-left: auto; font-size: 11px; color: rgba(255,255,255,0.4); letter-spacing: 0.04em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+    .topbar-link   { flex-shrink: 0; font-size: 11px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase; padding: 5px 12px; border-radius: 4px; border: 1px solid #7c3aed; color: #c4b5fd; background: rgba(124,58,237,0.15); text-decoration: none; transition: background 0.15s; }
+    .topbar-link:hover { background: rgba(255,255,255,0.08); }
+    iframe { flex: 1; border: none; background: #fff; }
+    .fallback { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 40px; text-align: center; }
+    .fallback-icon  { font-size: 56px; opacity: 0.25; }
+    .fallback-title { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
+    .fallback-body  { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.7; max-width: 400px; }
+    .fallback-btn   { padding: 10px 24px; border-radius: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; text-decoration: none; background: #7c3aed; color: #fff; border: none; cursor: pointer; transition: opacity 0.15s; }
+    .fallback-btn:hover { opacity: 0.85; }
+  </style>
+</head>
+<body>
+
+  <div class="topbar">
+    <div class="topbar-accent"></div>
+    <div class="topbar-name">FRESNO YOSEMITE IAP</div>
+    <div class="topbar-badge">Air National Guard</div>
+    <div class="topbar-url">https://www.144fw.ang.af.mil/</div>
+    <a class="topbar-link" href="https://www.144fw.ang.af.mil/" target="_blank" rel="noopener">Open in New Tab &#8599;</a>
+  </div>
+
+  <!--
+    The iframe tries to embed the wing's official .mil website.
+    Many .mil sites block iframe embedding via X-Frame-Options: DENY.
+    If that happens the iframe will be blank — the fallback div below
+    is shown automatically via the JavaScript timeout check.
+  -->
+  <iframe
+    id="wing-frame"
+    src="https://www.144fw.ang.af.mil/"
+    title="FRESNO YOSEMITE IAP Wing Website"
+    sandbox="allow-scripts allow-same-origin allow-forms allow-popups"
+  ></iframe>
+
+  <!-- Shown when the .mil site blocks iframe embedding -->
+  <div class="fallback" id="fallback">
+    <div class="fallback-icon">&#128506;</div>
+    <div class="fallback-title">FRESNO YOSEMITE IAP</div>
+    <div class="fallback-body">
+      This wing's official website cannot be embedded directly.<br>
+      Click the button below to open it in a new tab.
+    </div>
+    <a class="fallback-btn" href="https://www.144fw.ang.af.mil/" target="_blank" rel="noopener">
+      Visit Wing Website &#8599;
+    </a>
+  </div>
+
+  <script>
+    /*
+    Many .mil sites set X-Frame-Options: DENY which prevents embedding.
+    We detect this by checking if the iframe body is accessible and non-empty.
+    A cross-origin security error also means the embed was blocked.
+    If either happens we hide the iframe and show the fallback panel instead.
+    */
+    function showFallback() {
+      document.getElementById('wing-frame').style.display = 'none';
+      document.getElementById('fallback').style.display   = 'flex';
+    }
+
+    function checkFrame() {
+      var frame = document.getElementById('wing-frame');
+      if (!frame || frame.style.display === 'none') return;
+      try {
+        var doc = frame.contentDocument || frame.contentWindow.document;
+        if (!doc || !doc.body || doc.body.innerHTML.trim() === '') {
+          showFallback();
+        }
+      } catch (e) {
+        // Cross-origin access blocked = site refused the embed
+        showFallback();
+      }
+    }
+
+    // Check once on load, then again after a 4-second grace period
+    document.getElementById('wing-frame').addEventListener('load', checkFrame);
+    setTimeout(checkFrame, 4000);
+  </script>
+
+</body>
+</html>
