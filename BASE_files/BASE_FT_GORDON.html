@@ -20,11 +20,6 @@
     .loading-text { font-size: 12px; letter-spacing: 0.08em; text-transform: uppercase; color: rgba(255,255,255,0.35); }
     #base-frame { flex: 1; border: none; background: #fff; display: none; }
     #fallback { flex: 1; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 20px; padding: 40px; text-align: center; }
-    .fallback-icon  { font-size: 56px; opacity: 0.25; }
-    .fallback-title { font-size: 18px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: rgba(255,255,255,0.7); }
-    .fallback-body  { font-size: 13px; color: rgba(255,255,255,0.4); line-height: 1.7; max-width: 400px; }
-    .fallback-btn   { display: inline-block; padding: 12px 28px; border-radius: 6px; font-size: 13px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; text-decoration: none; background: #1e5fa8; color: #fff; transition: opacity 0.15s; }
-    .fallback-btn:hover { opacity: 0.85; }
   </style>
 </head>
 <body>
@@ -45,20 +40,17 @@
   <iframe id="base-frame" src="https://home.army.mil/gordon" title="FT GORDON Official Website" sandbox="allow-scripts allow-same-origin allow-forms allow-popups"></iframe>
 
   <div id="fallback">
-    <div class="fallback-icon">&#127961;</div>
-    <div class="fallback-title">FT GORDON</div>
     <div class="fallback-body">
-      This installation's official website cannot be embedded directly due to its
-      security settings, but you can visit it in a new tab below.
+      If the website does not load, <a href="https://home.army.mil/gordon" target="_blank" rel="noopener">click here</a>.
     </div>
-    <a class="fallback-btn" href="https://home.army.mil/gordon" target="_blank" rel="noopener">Visit Official Website &#8599;</a>
   </div>
 
   <script>
-    var frame    = document.getElementById("base-frame");
+    var frame    = document.getElementById("base-frame") || document.getElementById("wing-frame");
     var loading  = document.getElementById("loading");
     var fallback = document.getElementById("fallback");
-    var resolved = false;
+    var loaded   = false;  // true once the iframe fires a successful load event
+    var resolved = false;  // guard so we only resolve once
 
     function showIframe() {
       if (resolved) return;
@@ -75,20 +67,22 @@
       fallback.style.display = "flex";
     }
 
+    // Mark the iframe as loaded when it fires its load event
     frame.addEventListener("load", function() {
       try {
         var doc = frame.contentDocument || frame.contentWindow.document;
         if (doc && doc.body && doc.body.innerHTML.trim().length > 0) {
-          showIframe();
-        } else {
-          showFallback();
+          loaded = true;
         }
       } catch (e) {
-        showFallback();
+        // Cross-origin block — leave loaded = false
       }
     });
 
-    setTimeout(function() { showFallback(); }, 6000);
+    // After exactly 5 seconds: show iframe if it loaded, fallback if not
+    setTimeout(function() {
+      if (loaded) { showIframe(); } else { showFallback(); }
+    }, 5000);
   </script>
 
 </body>
