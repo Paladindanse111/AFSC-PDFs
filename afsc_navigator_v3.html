@@ -1178,13 +1178,19 @@
 
     /**
      * Returns true if a data row should appear given the checkbox state.
-     * V3 data is Active Duty only. The only filter is First Duty Station.
-     * First_Duty_Station: "Yes" or "No" in the CSV.
+     * V3 data is Active Duty only.
+     *
+     * First_Duty_Station column in the CSV:
+     *   "Yes" = base is in the original curated FDS list (v7 bases)
+     *   "No"  = base appears in the expanded dataset only
+     *
+     * Checkbox behavior:
+     *   Checked (default) = show ONLY First_Duty_Station === "Yes" rows
+     *   Unchecked         = show ALL rows regardless of FDS status
      */
     function isBaseVisible(row) {
-      const c = getChecked();
+      const c   = getChecked();
       const fds = (row.First_Duty_Station || "No").trim();
-      /* When FDS is checked, hide any base not in the original curated set */
       if (c.fds && fds !== "Yes") return false;
       return true;
     }
@@ -2067,7 +2073,7 @@
       },
       {
         icon: "\u2611\uFE0F", title: "Filter by Base Type",
-        body: "The <strong>First Duty Stations Only</strong> checkbox (checked by default) shows only the primary curated bases.<br><br>Uncheck it to reveal all additional Active Duty locations from the full dataset. This setting persists when you change other filters.",
+        body: "The <strong>First Duty Stations Only</strong> checkbox (checked by default) shows only the ~100 curated bases from the official first-assignment list.<br><br><strong>Uncheck it</strong> to reveal all Active Duty locations from the full expanded dataset, including overseas detachments, NATO sites, and non-standard assignments.<br><br>This setting persists when you change other filters.",
         target: "base-type-filter", position: "right"
       },
       {
