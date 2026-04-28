@@ -1,0 +1,2265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>USAF AFSC Navigator V2</title>
+
+  <!--
+  ============================================================
+  ESRI ArcGIS Maps SDK FOR JAVASCRIPT
+  ============================================================
+  dojoConfig must be declared BEFORE the SDK script loads.
+  async:true lets modules load in parallel (faster startup).
+  The esri-featurelayer-webgl flag enables GPU-accelerated
+  rendering for large datasets.
+  ============================================================
+  -->
+  <script>
+    var dojoConfig = { async: true, has: { "esri-featurelayer-webgl": 1 } };
+  </script>
+  <link rel="stylesheet" href="https://js.arcgis.com/4.30/esri/themes/dark/main.css"/>
+  <script src="https://js.arcgis.com/4.30/" crossorigin></script>
+
+  <!--
+  ============================================================
+  FONTS
+  ============================================================
+  Barlow Condensed  — used for headings and buttons
+  Share Tech Mono   — used for AFSC codes and data readouts
+  TO CUSTOMIZE: swap font names at fonts.google.com and update
+  the @import URL and --font-main / --font-mono variables below.
+  ============================================================
+  -->
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@400;600;700&family=Share+Tech+Mono&display=swap" rel="stylesheet"/>
+
+  <style>
+    /*
+    ============================================================
+    CSS VARIABLES — THE MAIN CUSTOMIZATION ZONE
+    ============================================================
+    Changing any value here restyles the entire page at once.
+    You should never need to dig into individual element styles
+    to change a color or font — just update the variable here.
+
+    --left-w    Width of the left selector panel
+    --map-w     Default width of the center map panel
+    ============================================================
+    */
+    :root {
+      /* Background shades (dark to darker) */
+      --bg-dark:       #0a0e1a;
+      --bg-panel:      #0f1524;
+      --bg-card:       #161d30;
+      --bg-input:      #1e2740;
+
+      /* Brand blue — used for highlights, borders, buttons */
+      --accent:        #1e5fa8;
+      --accent-hover:  #2471c8;
+      --accent-glow:   rgba(30, 95, 168, 0.35);
+
+      /* Text colors */
+      --text-primary:  #e8edf5;   /* main body text */
+      --text-muted:    #ffffff;   /* labels, secondary text */
+      --text-accent:   #5ba3f5;   /* highlighted / active text */
+
+      /* Borders */
+      --border:        rgba(255,255,255,0.07);
+      --border-accent: rgba(30, 95, 168, 0.6);
+
+      /* Fonts */
+      --font-main:     'Barlow Condensed', sans-serif;
+      --font-mono:     'Share Tech Mono', monospace;
+
+      /* Shape & motion */
+      --radius:        6px;
+      --transition:    0.2s ease;
+
+      /* Layout widths */
+      --left-w:        260px;
+      --map-w:         700px;  /* TO CUSTOMIZE: change the default map panel width */
+    }
+
+    /* ── RESET ─────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    html, body {
+      height: 100%;
+      font-family: var(--font-main);
+      background: var(--bg-dark);
+      color: var(--text-primary);
+      overflow: hidden; /* prevents page scroll — the panels scroll internally */
+    }
+
+    /* ── HEADER BAR ─────────────────────────────────────────── */
+    /*
+    The top strip that holds the title, subtitle, and help button.
+    TO CUSTOMIZE: change title/subtitle text in the HTML body below.
+    */
+    header {
+      height: 50px;
+      background: var(--bg-panel);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 20px;
+      gap: 14px;
+      flex-shrink: 0;
+      position: relative;
+      z-index: 10;
+    }
+    .header-accent { width: 4px; height: 26px; background: var(--accent); border-radius: 2px; }
+    .header-title  { font-size: 17px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; }
+    .header-sub    { font-size: 12px; color: var(--text-muted); letter-spacing: 0.05em; margin-left: auto; }
+
+    /* ── THREE-COLUMN LAYOUT ────────────────────────────────── */
+    /*
+    The page is divided into three columns:
+      Left panel  — dropdowns and checkboxes
+      Map panel   — the interactive ArcGIS map (resizable)
+      Right panel — the iframe content viewer
+    The drag handle sits between the map and right panels.
+    */
+    .layout { display: flex; height: calc(100vh - 50px); overflow: hidden; }
+
+    /* Left panel */
+    .left-panel {
+      width: var(--left-w);
+      flex-shrink: 0;
+      background: var(--bg-panel);
+      border-right: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      padding: 18px 14px;
+      gap: 14px;
+      overflow-y: auto;
+      z-index: 5;
+    }
+
+    /* Center map panel */
+    .map-panel {
+      width: var(--map-w);
+      flex-shrink: 0;
+      position: relative;
+      border-right: 1px solid var(--border);
+    }
+
+    /*
+    The ArcGIS SDK targets #map-view by ID and fills it with the map canvas.
+    user-select: none  — stops text from getting highlighted when dragging the map.
+    cursor: grab       — gives the map the "hand" cursor that users expect.
+    */
+    #map-view {
+      width: 100%;
+      height: 100%;
+      user-select: none;
+      -webkit-user-select: none;
+      cursor: grab;
+    }
+
+    /*
+    Floating label in the top-right corner of the map.
+    Appears when a base is selected; shows the base name.
+    Placed top-RIGHT (not top-left) to avoid the Esri zoom buttons.
+    TO CUSTOMIZE: adjust top/right values to reposition.
+    */
+    #map-label {
+      position: absolute;
+      top: 12px; right: 12px;
+      background: rgba(10, 14, 26, 0.85);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius);
+      padding: 6px 12px;
+      font-size: 13px; font-weight: 600;
+      letter-spacing: 0.05em;
+      color: var(--text-accent);
+      pointer-events: none; /* label never blocks map clicks */
+      display: none;
+      z-index: 10;
+      max-width: 220px;
+      text-align: right;
+    }
+
+    /* Right panel — holds the toggle bar + iframe */
+    .right-panel { flex: 1; position: relative; display: flex; flex-direction: column; background: var(--bg-dark); }
+
+    /* ── TOGGLE BAR (AFSC Page / Base Page) ─────────────────── */
+    /*
+    Only visible when BOTH a Base AND an AFSC are selected.
+    Lets users swap the iframe between the AFSC page and the Base website.
+    TO CUSTOMIZE: change button text in the HTML body below.
+    */
+    .toggle-bar { display: none; flex-shrink: 0; background: var(--bg-panel); border-bottom: 1px solid var(--border); padding: 6px 12px; gap: 8px; align-items: center; z-index: 5; }
+    .toggle-bar.visible { display: flex; }
+    .toggle-label { font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); margin-right: 4px; }
+
+    .toggle-btn {
+      font-family: var(--font-main); font-size: 13px; font-weight: 600;
+      letter-spacing: 0.05em; text-transform: uppercase;
+      padding: 5px 14px; border-radius: var(--radius);
+      border: 1px solid var(--border); background: transparent;
+      color: var(--text-muted); cursor: pointer; transition: all var(--transition);
+    }
+    .toggle-btn:hover  { border-color: var(--border-accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
+    .toggle-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .toggle-btn.active:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+
+    /* Thin animated bar at the top of the iframe while a page loads */
+    .loading-bar { position: absolute; top: 0; left: 0; height: 3px; background: var(--accent); width: 0; z-index: 20; display: none; }
+    .loading-bar.active { display: block; animation: loadpulse 1.4s ease infinite; }
+    @keyframes loadpulse { 0% { width:0%; opacity:1; } 70% { width:85%; opacity:1; } 100% { width:100%; opacity:0; } }
+
+    /* Default placeholder shown before any selection is made */
+    .iframe-placeholder { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 14px; pointer-events: none; }
+    .placeholder-icon  { font-size: 44px; opacity: 0.15; }
+    .placeholder-text  { font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); opacity: 0.5; }
+
+    /* The iframe itself — hidden until a URL is ready to load */
+    #content-frame { width: 100%; height: 100%; border: none; display: none; background: #fff; }
+
+    /*
+    No-info placeholder — shown instead of a blank iframe when a
+    Base_URL or PDF_URL is missing from the CSV data.
+    The icon and text are set dynamically by JavaScript.
+    */
+    #no-info-panel { position: absolute; inset: 0; display: none; flex-direction: column; align-items: center; justify-content: center; gap: 14px; background: var(--bg-dark); }
+    #no-info-panel.visible { display: flex; }
+    .no-info-icon  { font-size: 52px; opacity: 0.18; }
+    .no-info-title { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; }
+    .no-info-sub   { font-size: 12px; letter-spacing: 0.06em; color: var(--text-muted); opacity: 0.35; }
+
+    /*
+    ── AIRFRAME PHOTO PANEL ──────────────────────────────────────
+    Shown when the "Airframe" tab is active.
+    The photo fills the panel with object-fit: contain so it never
+    crops — letterboxed on dark background if aspect ratio differs.
+    The caption bar sits at the bottom over the image.
+    TO CUSTOMIZE: change --airframe-bg to adjust the background color.
+    */
+    #airframe-panel {
+      position: absolute; inset: 0;
+      display: none;           /* shown by JS when view === "airframe" */
+      flex-direction: column;
+      background: #05080f;     /* TO CUSTOMIZE: background behind the photo */
+      align-items: center;
+      justify-content: center;
+    }
+    #airframe-panel.visible { display: flex; }
+
+    #airframe-inner {
+      position: relative;
+      width: 100%; height: 100%;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    #airframe-img {
+      max-width: 100%; max-height: 100%;
+      width: 100%; height: 100%;
+      object-fit: contain;   /* never crops — shows full aircraft */
+      display: block;
+    }
+
+    /* Caption bar overlaid at the bottom of the photo */
+    #airframe-caption {
+      position: absolute; bottom: 0; left: 0; right: 0;
+      padding: 10px 16px;
+      background: linear-gradient(to top, rgba(5,8,15,0.92), transparent);
+      font-size: 15px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: var(--text-primary);
+      pointer-events: none;
+    }
+
+    /* ── LEFT PANEL: SELECTOR BLOCKS ────────────────────────── */
+    /*
+    Each dropdown (Base / AFSC / Aircraft) lives inside a .selector-block.
+    The label has a small blue bar before it (via ::before pseudo-element).
+    The .selection-display shows the current value below the dropdown.
+    The .clear-btn appears only when something is selected.
+    */
+    .selector-block { display: flex; flex-direction: column; gap: 9px; }
+
+    .selector-label, .filter-label {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
+      text-transform: uppercase; color: var(--text-muted);
+      display: flex; align-items: center; gap: 7px;
+    }
+    .selector-label::before, .filter-label::before {
+      content: ''; display: block;
+      width: 3px; height: 11px;
+      background: var(--accent); border-radius: 2px;
+    }
+
+    select {
+      width: 100%; padding: 9px 34px 9px 11px;
+      background: var(--bg-input);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      color: var(--text-primary);
+      font-family: var(--font-main); font-size: 14px;
+      letter-spacing: 0.02em;
+      appearance: none; /* removes the browser's default arrow */
+      cursor: pointer;
+      transition: border-color var(--transition), box-shadow var(--transition);
+      /* Custom dropdown arrow via inline SVG */
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a8aaa' stroke-width='1.5' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 11px center;
+      background-size: 11px;
+    }
+    select:hover { border-color: var(--border-accent); }
+    select:focus  { outline: none; border-color: var(--accent); box-shadow: 0 0 0 3px var(--accent-glow); }
+    select option { background: var(--bg-input); color: var(--text-primary); }
+
+    .selection-display {
+      background: rgba(30,95,168,0.1);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius);
+      padding: 7px 10px; font-size: 12px;
+      color: var(--text-accent); font-family: var(--font-mono);
+      display: none; /* shown by JS when a value is selected */
+      word-break: break-word; line-height: 1.4;
+    }
+
+    .clear-btn {
+      background: transparent; border: 1px solid var(--border);
+      border-radius: var(--radius); color: var(--text-muted);
+      font-family: var(--font-main); font-size: 11px;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 5px 10px; cursor: pointer;
+      transition: all var(--transition);
+      display: none; /* shown by JS when a value is selected */
+      width: 100%;
+    }
+    .clear-btn:hover { border-color: var(--accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
+
+    /* Thin horizontal rule that separates sections in the left panel */
+    .panel-divider { height: 1px; background: var(--border); margin: 0 -14px; }
+
+    /*
+    "or" divider — shown between the three selector dropdowns.
+    A thin line on each side with the word "or" centered between them.
+    */
+    .or-divider {
+      display: flex; align-items: center; gap: 10px;
+      margin: 0; color: var(--text-muted); opacity: 0.35;
+    }
+    .or-divider::before,
+    .or-divider::after {
+      content: ''; flex: 1; height: 1px; background: var(--border);
+    }
+    .or-divider span {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      text-transform: uppercase; flex-shrink: 0;
+    }
+
+    /* ── LEFT PANEL: BASE TYPE CHECKBOXES ───────────────────── */
+    /*
+    Three checkboxes that show/hide Active Duty, ANG, and Reserve pins.
+    Each row has a colored dot that matches the pin color on the map.
+    The checkboxes persist across all filter changes (never auto-reset).
+    */
+    .filter-block { display: flex; flex-direction: column; gap: 8px; }
+
+    .checkbox-row {
+      display: flex; align-items: center; gap: 8px;
+      padding: 5px 8px; border-radius: var(--radius);
+      cursor: pointer; transition: background var(--transition);
+      user-select: none;
+    }
+    .checkbox-row:hover { background: rgba(255,255,255,0.04); }
+    .checkbox-row input[type="checkbox"] {
+      width: 14px; height: 14px;
+      cursor: pointer; accent-color: var(--accent); flex-shrink: 0;
+    }
+    .checkbox-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+    .checkbox-text { font-size: 12px; color: var(--text-muted); letter-spacing: 0.04em; }
+
+    /* Result count shown at the bottom of the left panel */
+    .status-block { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); letter-spacing: 0.03em; line-height: 1.6; }
+    .status-count { color: var(--text-accent); font-family: var(--font-mono); font-size: 22px; display: block; margin-bottom: 2px; }
+
+    /* ── ESRI WIDGET OVERRIDES ──────────────────────────────── */
+    /* Match the Esri zoom buttons and attribution to our dark theme */
+    .esri-ui-corner { gap: 6px; }
+    .esri-attribution { display: none !important; }
+    .esri-zoom .esri-widget--button { background: var(--bg-card) !important; border: 1px solid var(--border) !important; color: var(--text-primary) !important; }
+    .esri-zoom .esri-widget--button:hover { background: var(--bg-input) !important; }
+
+    /* ── BASE POPUP ─────────────────────────────────────────── */
+    /*
+    Floats over the map when a pin is clicked.
+    Contains: base name, type badge, aircraft tags, AFSC list.
+    Draggable by the title area. Close button is positioned
+    absolutely so it's always reachable even when the popup is full.
+    TO CUSTOMIZE: adjust width and max-height below.
+    */
+    #map-popup {
+      position: absolute; z-index: 20;
+      width: 280px;        /* TO CUSTOMIZE: popup width */
+      max-height: 420px;   /* TO CUSTOMIZE: max height before scrolling */
+      background: var(--bg-panel);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.6);
+      display: none; flex-direction: column; overflow: hidden;
+    }
+    #map-popup.visible { display: flex; }
+
+    /* Header row (draggable) */
+    .popup-header {
+      padding: 10px 12px 8px; background: var(--bg-card);
+      border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      flex-shrink: 0; cursor: grab; user-select: none;
+    }
+    .popup-header.grabbing { cursor: grabbing; }
+
+    /* Colored badge showing "Active Duty", "ANG", or "Reserve" */
+    .popup-type-badge {
+      font-size: 9px; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; padding: 2px 6px; border-radius: 3px;
+      flex-shrink: 0; margin-right: 6px;
+    }
+    .popup-type-badge.active-duty { background: rgba(185,28,28,0.3);  color: #f87171; border: 1px solid rgba(185,28,28,0.5);  }
+    .popup-type-badge.ang         { background: rgba(124,58,237,0.3); color: #c4b5fd; border: 1px solid rgba(124,58,237,0.5); }
+    .popup-type-badge.reserve     { background: rgba(6,120,90,0.3);   color: #6ee7b7; border: 1px solid rgba(6,120,90,0.5);   }
+    .popup-type-badge.rotc        { background: rgba(217,119,6,0.3);  color: #fcd34d; border: 1px solid rgba(217,119,6,0.5);  }
+    .popup-type-badge.detachment  { background: rgba(8,145,178,0.3);  color: #67e8f9; border: 1px solid rgba(8,145,178,0.5); }
+
+    .popup-drag-hint { font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-muted); opacity: 0.5; flex-shrink: 0; }
+    .popup-base-name { font-size: 13px; font-weight: 700; letter-spacing: 0.06em; text-transform: uppercase; color: var(--text-primary); line-height: 1.3; flex: 1; padding-right: 8px; }
+
+    /* Close button — absolutely positioned so drag events can't block it */
+    .popup-close { position: absolute; top: 6px; right: 8px; z-index: 30; background: transparent; border: none; color: var(--text-muted); font-size: 16px; cursor: pointer; padding: 4px 6px; line-height: 1; border-radius: 3px; transition: color var(--transition), background var(--transition); }
+    .popup-close:hover { color: var(--text-primary); background: rgba(255,255,255,0.08); }
+
+    /* Aircraft tags row inside the popup */
+    .popup-aircraft-section { padding: 6px 12px 4px; flex-shrink: 0; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.15); }
+    .popup-aircraft-label   { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; margin-bottom: 4px; }
+    .popup-aircraft-tags    { display: flex; flex-wrap: wrap; gap: 4px; }
+    /* Each aircraft tag is clickable — clicking it sets the Aircraft filter */
+    .popup-aircraft-tag {
+      font-family: var(--font-mono); font-size: 10px; padding: 2px 7px;
+      border-radius: 3px; background: rgba(30,95,168,0.2);
+      border: 1px solid rgba(30,95,168,0.4); color: var(--text-accent);
+      cursor: pointer; transition: background var(--transition);
+    }
+    .popup-aircraft-tag:hover    { background: rgba(30,95,168,0.4); }
+    .popup-aircraft-tag.selected { background: rgba(30,95,168,0.5); border-color: var(--accent); color: #fff; }
+
+    .popup-sub { font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); padding: 6px 12px 4px; flex-shrink: 0; border-bottom: 1px solid var(--border); }
+    .popup-afsc-list { overflow-y: auto; flex: 1; }
+
+    /* Each row in the AFSC list inside the popup */
+    .popup-afsc-row { padding: 7px 12px; cursor: pointer; border-bottom: 1px solid var(--border); transition: background var(--transition); display: flex; flex-direction: column; gap: 2px; }
+    .popup-afsc-row:last-child { border-bottom: none; }
+    .popup-afsc-row:hover    { background: rgba(30,95,168,0.15); }
+    .popup-afsc-row.selected { background: rgba(30,95,168,0.25); border-left: 3px solid var(--accent); padding-left: 9px; }
+    .popup-afsc-code { font-family: var(--font-mono); font-size: 12px; color: var(--text-accent); letter-spacing: 0.04em; }
+    .popup-afsc-name { font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em; line-height: 1.3; }
+
+    /* ── DRAG HANDLE ────────────────────────────────────────── */
+    /*
+    The thin vertical bar between the map and the content panel.
+    Drag it left or right to resize the map.
+    Uses the Pointer Capture API so the drag stays locked to the
+    handle even when the cursor slides over the ArcGIS canvas.
+    TO CUSTOMIZE: increase width to make it easier to grab.
+    */
+    .drag-handle {
+      width: 14px; flex-shrink: 0;
+      background: rgba(255,255,255,0.08); cursor: col-resize;
+      position: relative; transition: background 0.15s; z-index: 10;
+      display: flex; align-items: center; justify-content: center;
+    }
+    .drag-handle:hover, .drag-handle.dragging { background: rgba(30,95,168,0.6); }
+    .drag-handle::before        { content: '\22EE'; color: rgba(255,255,255,0.3); font-size: 16px; pointer-events: none; }
+    .drag-handle:hover::before,
+    .drag-handle.dragging::before { color: rgba(255,255,255,0.7); }
+
+    /* ── MAP CONTROLS ───────────────────────────────────────── */
+    /*
+    Two small buttons in the bottom-left corner of the map:
+      Pin Legend  — toggles the color reference panel
+      Dark Map    — switches between dark streets and satellite
+    TO CUSTOMIZE: adjust bottom/left to reposition.
+    */
+    .map-controls { position: absolute; bottom: 16px; left: 12px; display: flex; flex-direction: column; gap: 6px; z-index: 15; }
+
+    .map-ctrl-btn {
+      font-family: var(--font-main); font-size: 11px; font-weight: 700;
+      letter-spacing: 0.07em; text-transform: uppercase;
+      padding: 6px 10px; border-radius: var(--radius);
+      border: 1px solid var(--border);
+      background: rgba(10,14,26,0.88); color: var(--text-muted);
+      cursor: pointer; transition: all var(--transition);
+      white-space: nowrap; backdrop-filter: blur(4px);
+    }
+    .map-ctrl-btn:hover  { border-color: var(--border-accent); color: var(--text-accent); background: rgba(15,21,36,0.95); }
+    .map-ctrl-btn.active { border-color: var(--accent); color: #fff; background: rgba(30,95,168,0.35); }
+
+    /* ── PIN LEGEND PANEL ───────────────────────────────────── */
+    /*
+    Toggled by the Pin Legend button.
+    Dot colors must match the PIN_* constants in the JavaScript section.
+    TO CUSTOMIZE: edit .legend-dot background colors and the label text.
+    */
+    #map-legend {
+      position: absolute; bottom: 90px; left: 12px;
+      background: rgba(10,14,26,0.92);
+      border: 1px solid var(--border-accent);
+      border-radius: var(--radius); padding: 12px 14px;
+      z-index: 15; backdrop-filter: blur(6px);
+      display: none; flex-direction: column; gap: 8px; min-width: 240px;
+    }
+    #map-legend.visible { display: flex; }
+    .legend-title   { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .legend-section { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.5; margin-top: 4px; }
+    .legend-row     { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
+    .legend-dot     { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(255,255,255,0.1); }
+    .legend-dot.dim { width: 9px; height: 9px; margin-left: 1.5px; }
+
+    /* ── GUIDED TOUR OVERLAY ────────────────────────────────── */
+    /*
+    Full-screen overlay shown on first load (and when ? is clicked).
+    The card walks through the page features step by step.
+    TO CUSTOMIZE: edit the tourSteps array in the JavaScript section.
+    */
+    #tour-overlay { position: fixed; inset: 0; z-index: 99999; pointer-events: none; transition: opacity 0.3s ease; }
+    #tour-overlay.hidden  { opacity: 0; pointer-events: none; }
+    #tour-overlay.visible { opacity: 1; pointer-events: all; }
+    #tour-backdrop { position: absolute; inset: 0; background: rgba(5,8,18,0.82); }
+
+    #tour-card {
+      position: absolute;
+      width: 380px; /* TO CUSTOMIZE: card width */
+      background: var(--bg-panel);
+      border: 1px solid var(--border-accent); border-radius: 10px;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.7), 0 0 0 1px rgba(30,95,168,0.2);
+      overflow: hidden;
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      pointer-events: all;
+    }
+    #tour-card.animating { opacity: 0; transform: translateY(8px); }
+    .tour-card-bar       { height: 4px; background: linear-gradient(90deg, var(--accent), #5ba3f5); }
+    .tour-card-body      { padding: 24px 24px 16px; }
+    .tour-step-indicator { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-accent); margin-bottom: 10px; font-family: var(--font-mono); }
+    .tour-icon           { font-size: 32px; margin-bottom: 10px; display: block; line-height: 1; }
+    .tour-title          { font-size: 20px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-primary); margin-bottom: 10px; line-height: 1.2; }
+    .tour-body           { font-size: 14px; color: var(--text-muted); line-height: 1.65; letter-spacing: 0.02em; }
+    .tour-body strong    { color: var(--text-accent); font-weight: 600; }
+
+    /* Clickable dot progress indicator at the bottom of each card */
+    .tour-progress { display: flex; gap: 6px; align-items: center; padding: 14px 24px 0; }
+    .tour-dot       { width: 6px; height: 6px; border-radius: 50%; background: var(--border); transition: background 0.2s, width 0.2s; cursor: pointer; }
+    .tour-dot.active { background: var(--accent); width: 18px; border-radius: 3px; }
+    .tour-dot.done   { background: rgba(30,95,168,0.4); }
+
+    .tour-buttons { display: flex; gap: 8px; padding: 14px 24px 20px; justify-content: flex-end; align-items: center; }
+    .tour-btn { font-family: var(--font-main); font-size: 13px; font-weight: 700; letter-spacing: 0.07em; text-transform: uppercase; padding: 8px 18px; border-radius: var(--radius); border: 1px solid var(--border); background: transparent; color: var(--text-muted); cursor: pointer; transition: all var(--transition); }
+    .tour-btn:hover  { border-color: var(--border-accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
+    .tour-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+    .tour-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
+    .tour-skip { font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: auto; letter-spacing: 0.05em; text-decoration: underline; text-underline-offset: 3px; opacity: 0.6; transition: opacity var(--transition); background: none; border: none; font-family: var(--font-main); padding: 0; }
+    .tour-skip:hover { opacity: 1; }
+
+    /* Glowing spotlight ring that highlights the element being described */
+    #tour-spotlight { position: fixed; border: 2px solid var(--accent); border-radius: 8px; box-shadow: 0 0 0 4px rgba(30,95,168,0.25), 0 0 20px rgba(30,95,168,0.3); pointer-events: none; z-index: 100000; transition: all 0.35s ease; display: none; }
+    #tour-spotlight.visible { display: block; }
+
+    /* Help (?) button in the header — always visible, reopens the tour */
+    .help-btn { margin-left: 12px; width: 28px; height: 28px; border-radius: 50%; border: 1px solid var(--border); background: transparent; color: var(--text-muted); font-family: var(--font-main); font-size: 14px; font-weight: 700; cursor: pointer; transition: all var(--transition); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+    .help-btn:hover { border-color: var(--accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
+
+    /* ── SCROLLBAR STYLING ──────────────────────────────────── */
+    /* Abbreviation slide-out panel */
+    #abbrev-panel {
+      overflow: hidden;
+      max-height: 0;
+      transition: max-height 0.35s ease, padding 0.35s ease;
+      padding: 0 8px;
+    }
+    #abbrev-panel.open {
+      max-height: 400px;
+      padding: 8px;
+      overflow-y: auto;
+    }
+    .abbrev-toggle {
+      font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
+      text-transform: uppercase; color: var(--text-muted);
+      display: flex; align-items: center; gap: 7px;
+      cursor: pointer; padding: 4px 0;
+      user-select: none; transition: color var(--transition);
+    }
+    .abbrev-toggle::before {
+      content: ''; display: block; width: 3px; height: 11px;
+      background: var(--accent); border-radius: 2px;
+    }
+    .abbrev-toggle:hover { color: var(--text-accent); }
+    .abbrev-arrow { margin-left: auto; font-size: 10px; transition: transform 0.3s; }
+    .abbrev-arrow.open { transform: rotate(180deg); }
+    .abbrev-row {
+      display: flex; gap: 6px; align-items: baseline;
+      padding: 3px 0; border-bottom: 1px solid var(--border);
+      font-size: 11px; line-height: 1.4;
+    }
+    .abbrev-row:last-child { border-bottom: none; }
+    .abbrev-code { font-family: var(--font-mono); color: var(--text-accent); flex-shrink: 0; min-width: 60px; font-size: 10px; }
+    .abbrev-desc { color: var(--text-muted); opacity: 0.7; }
+
+    ::-webkit-scrollbar { width: 5px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+  </style>
+</head>
+<body>
+
+  <!--
+  ============================================================
+  HEADER
+  TO CUSTOMIZE: change the title and subtitle text below.
+  ============================================================
+  -->
+  <header>
+    <div class="header-accent"></div>
+    <div class="header-title">USAF AFSC Navigator V2</div>
+    <div class="header-sub">Select a Base, AFSC, or Aircraft &mdash; map and content update together</div>
+    <button class="help-btn" onclick="startTour()" title="Open guided tour">?</button>
+  </header>
+
+  <div class="layout">
+
+    <!--
+    ============================================================
+    LEFT PANEL — Dropdowns and filters
+    ============================================================
+    Three cascading dropdowns (Base, AFSC, Aircraft) plus
+    checkboxes to show/hide each base type.
+    ============================================================
+    -->
+    <div class="left-panel">
+
+      <!-- Base selector -->
+      <div class="selector-block">
+        <div class="selector-label">Select Base</div>
+        <select id="base-select"><option value="">&#8212; All Bases &#8212;</option></select>
+        <div class="selection-display" id="base-display"></div>
+        <button class="clear-btn" id="base-clear-btn" onclick="clearBase()">&#10005; Clear Base</button>
+      </div>
+
+      <div class="or-divider"><span>or</span></div>
+
+      <!-- AFSC selector -->
+      <div class="selector-block">
+        <div class="selector-label">Select AFSC</div>
+        <select id="afsc-select"><option value="">&#8212; All AFSCs &#8212;</option></select>
+        <div class="selection-display" id="afsc-display"></div>
+        <button class="clear-btn" id="afsc-clear-btn" onclick="clearAFSC()">&#10005; Clear AFSC</button>
+      </div>
+
+      <div class="or-divider"><span>or</span></div>
+
+      <!-- Aircraft selector -->
+      <div class="selector-block">
+        <div class="selector-label">Select Aircraft</div>
+        <select id="aircraft-select"><option value="">&#8212; All Aircraft &#8212;</option></select>
+        <div class="selection-display" id="aircraft-display"></div>
+        <button class="clear-btn" id="aircraft-clear-btn" onclick="clearAircraft()">&#10005; Clear Aircraft</button>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!--
+      Base type checkboxes.
+      Dot colors must match the pin colors defined in the CSS and JS below.
+      All three are checked by default.  Changes never reset other filters.
+      -->
+      <div class="filter-block" id="base-type-filter">
+        <div class="filter-label">Show Base Types</div>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-active" checked onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(185,28,28);"></div>
+          <span class="checkbox-text">Active Duty</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-ang" checked onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(124,58,237);"></div>
+          <span class="checkbox-text">Air National Guard</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-reserve" checked onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(6,120,90);"></div>
+          <span class="checkbox-text">Reserve</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-ima" checked onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(6,120,90);"></div>
+          <span class="checkbox-text">IMA (Reserve)</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-rotc" onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(217,119,6);"></div>
+          <span class="checkbox-text">ROTC</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-det" onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(8,145,178);"></div>
+          <span class="checkbox-text">Detachments</span>
+        </label>
+        <label class="checkbox-row">
+          <input type="checkbox" id="chk-fds" checked onchange="onCheckboxChange()">
+          <div class="checkbox-dot" style="background: rgb(255,255,255); border: 1px solid rgba(255,255,255,0.3);"></div>
+          <span class="checkbox-text">First Duty Stations Only</span>
+        </label>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- Abbreviation reference panel -->
+      <div class="abbrev-block">
+        <div class="abbrev-toggle" onclick="toggleAbbrev()">
+          Abbreviations <span class="abbrev-arrow" id="abbrev-arrow">&#9660;</span>
+        </div>
+        <div id="abbrev-panel">
+          <div class="abbrev-row"><span class="abbrev-code">AB</span><span class="abbrev-desc">Air Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ABS</span><span class="abbrev-desc">Air Base Squadron</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">AFB</span><span class="abbrev-desc">Air Force Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">AFS</span><span class="abbrev-desc">Air Force Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">AGS</span><span class="abbrev-desc">Air Guard Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">AIN</span><span class="abbrev-desc">Army Installation</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ANG</span><span class="abbrev-desc">Air National Guard</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ANGB</span><span class="abbrev-desc">Air National Guard Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ANX</span><span class="abbrev-desc">Annex</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ARB</span><span class="abbrev-desc">Air Reserve Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ARS</span><span class="abbrev-desc">Air Reserve Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ATM</span><span class="abbrev-desc">Air Terminal</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">CAP</span><span class="abbrev-desc">Capital Airport</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">COM</span><span class="abbrev-desc">Communications Site</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">DEP</span><span class="abbrev-desc">Depot</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">DET</span><span class="abbrev-desc">Detachment</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">FDS</span><span class="abbrev-desc">First Duty Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">IAP</span><span class="abbrev-desc">International Airport</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">IMA</span><span class="abbrev-desc">Individual Mobilization Augmentee</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">JAP</span><span class="abbrev-desc">Joint-Use Airport</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">JB</span><span class="abbrev-desc">Joint Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">JBSA</span><span class="abbrev-desc">Joint Base San Antonio</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">JRB</span><span class="abbrev-desc">Joint Reserve Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">MGI</span><span class="abbrev-desc">Marine Corps Ground Installation</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">MTC</span><span class="abbrev-desc">Military Training Center</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">NAS</span><span class="abbrev-desc">Naval Air Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">NS</span><span class="abbrev-desc">Naval Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">NSA</span><span class="abbrev-desc">Naval Support Activity</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">NYI</span><span class="abbrev-desc">Navy Installation</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">RAF</span><span class="abbrev-desc">Royal Air Force (UK Base)</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">ROTC</span><span class="abbrev-desc">Reserve Officer Training Corps</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">SFB</span><span class="abbrev-desc">Space Force Base</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">SFS</span><span class="abbrev-desc">Space Force Station</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">STG</span><span class="abbrev-desc">Storage Site / Staging Area</span></div>
+          <div class="abbrev-row"><span class="abbrev-code">TNG</span><span class="abbrev-desc">Training Site</span></div>
+        </div>
+      </div>
+
+      <div class="panel-divider"></div>
+
+      <!-- Status counter — shows how many bases match the current filter -->
+      <div class="status-block">
+        <span class="status-count" id="status-count">&#8212;</span>
+        <span id="status-label">Loading...</span>
+      </div>
+    </div><!-- end .left-panel -->
+
+
+    <!--
+    ============================================================
+    CENTER PANEL — Interactive map
+    ============================================================
+    The ArcGIS map fills this panel.  Pins are drawn here by JS.
+    The popup, legend, and map controls overlay this panel.
+    ============================================================
+    -->
+    <div class="map-panel">
+
+      <!-- ArcGIS renders into this div -->
+      <div id="map-view"></div>
+
+      <!-- Floating base-name label (top-right corner of the map) -->
+      <div id="map-label"></div>
+
+      <!--
+      Base popup — appears when a map pin is clicked.
+      Contains: base type badge | base name | aircraft tags | AFSC list.
+      The close button sits outside the draggable header so it's always
+      reachable regardless of where the popup is dragged.
+      -->
+      <div id="map-popup">
+        <div class="popup-header" id="popup-header">
+          <div class="popup-base-name" id="popup-base-name"></div>
+          <span class="popup-drag-hint">drag</span>
+        </div>
+        <button class="popup-close" onclick="closePopup()" title="Close">&#10005;</button>
+
+        <div class="popup-aircraft-section" id="popup-aircraft-section" style="display:none;">
+          <div class="popup-aircraft-label">Aircraft at this base</div>
+          <div class="popup-aircraft-tags" id="popup-aircraft-tags"></div>
+        </div>
+
+        <div class="popup-sub">AFSCs at this base &#8212; click to select</div>
+        <div class="popup-afsc-list" id="popup-afsc-list"></div>
+      </div>
+
+      <!--
+      Pin color legend — toggled by the "Pin Legend" button.
+      TO CUSTOMIZE: edit the dot colors (must match PIN_* in JS) and labels.
+      -->
+      <div id="map-legend">
+        <div class="legend-title">Pin Color Guide</div>
+        <div class="legend-section">Selection State</div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(255,255,255);"></div><span>Selected base (no filter)</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(250,204,21);"></div><span>Selected base + filter active</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(234,88,12);"></div><span>Matches current filter</span></div>
+        <div class="legend-row"><div class="legend-dot dim" style="background: rgba(255,69,0,0.2);"></div><span>Does not match filter</span></div>
+        <div class="legend-section">Base Type (default color)</div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(185,28,28);"></div><span>Active Duty</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(124,58,237);"></div><span>Air National Guard</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(6,120,90);"></div><span>Reserve</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(217,119,6);"></div><span>ROTC</span></div>
+        <div class="legend-row"><div class="legend-dot" style="background: rgb(8,145,178);"></div><span>Detachment</span></div>
+      </div>
+
+      <!-- Map control buttons — bottom-left of the map -->
+      <!--
+      TO CUSTOMIZE: change button label text, or move this div by
+      adjusting the bottom/left values in .map-controls in the CSS.
+      -->
+      <div class="map-controls" id="map-controls">
+        <button class="map-ctrl-btn" id="reset-btn"   onclick="resetMapView()">&#8635; Reset Map</button>
+        <button class="map-ctrl-btn" id="legend-btn"  onclick="toggleLegend()">&#9679; Pin Legend</button>
+        <button class="map-ctrl-btn" id="basemap-btn" onclick="toggleBasemap()">&#128506; Dark Map</button>
+      </div>
+    </div><!-- end .map-panel -->
+
+
+    <!-- Drag handle — resizes the map by click-dragging left or right -->
+    <div class="drag-handle" id="drag-handle"></div>
+
+
+    <!--
+    ============================================================
+    RIGHT PANEL — Content viewer (iframe)
+    ============================================================
+    Loads either the AFSC PDF page or the base website depending
+    on what is selected.  When a URL is missing from the CSV the
+    no-info-panel is shown instead.
+    ============================================================
+    -->
+    <div class="right-panel" id="right-panel">
+
+      <!--
+      Toggle bar — only visible when BOTH a Base AND an AFSC are selected.
+      TO CUSTOMIZE: change button label text here.
+      -->
+      <div class="toggle-bar" id="toggle-bar">
+        <span class="toggle-label">View:</span>
+        <button class="toggle-btn active" id="btn-afsc"     onclick="setView('afsc')">AFSC Page</button>
+        <button class="toggle-btn"        id="btn-base"     onclick="setView('base')">Base Page</button>
+        <button class="toggle-btn"        id="btn-airframe" onclick="setView('airframe')">Airframe</button>
+      </div>
+
+      <!-- Animated loading bar across the top of the iframe -->
+      <div class="loading-bar" id="loading-bar"></div>
+
+      <!-- Default placeholder (shown before any selection is made) -->
+      <div class="iframe-placeholder" id="placeholder">
+        <div class="placeholder-icon">=&#10026;=</div>
+        <div class="placeholder-text">Select a Base, AFSC, or Aircraft to load content</div>
+      </div>
+
+      <!-- No-info placeholder (shown when a URL is missing in the CSV) -->
+      <div id="no-info-panel">
+        <div class="no-info-icon" id="no-info-icon">&#128196;</div>
+        <div class="no-info-title" id="no-info-title">No Info Available</div>
+        <div class="no-info-sub"   id="no-info-sub"></div>
+      </div>
+
+      <!--
+      Airframe photo panel.
+      Shown when the "Airframe" tab is active.
+      Image src and caption are set by showAirframePhoto() in JS.
+      Images live in aircraft_images/ in the repo root.
+      TO CUSTOMIZE: update AIRCRAFT_IMAGE_PATH in the JS Configuration section.
+      -->
+      <div id="airframe-panel">
+        <div id="airframe-inner">
+          <img id="airframe-img" src="" alt=""/>
+          <div id="airframe-caption"></div>
+        </div>
+      </div>
+
+      <!-- The iframe loads the AFSC or Base URL here -->
+      <iframe id="content-frame" title="AFSC Content"></iframe>
+    </div><!-- end .right-panel -->
+
+  </div><!-- end .layout -->
+
+
+  <!-- ============================================================
+       JAVASCRIPT
+       Organized into clearly labeled sections:
+         1.  Configuration        — the values most likely to need changing
+         2.  State                — shared variables tracked across the page
+         3.  Utility              — small helper functions (debounce, DMS)
+         4.  Map initialization   — sets up the ArcGIS map and click handler
+         5.  CSV loading          — fetches and parses the data file
+         6.  Map pins             — draws and colors the pins
+         7.  Map navigation       — fly-to and reset animations
+         8.  Dropdowns            — cascading Base / AFSC / Aircraft selectors
+         9.  Content panel        — iframe loading and no-info placeholders
+         10. Status / UI helpers  — counter, clear buttons, selection labels
+         11. Base popup           — the click popup over the map
+         12. Map panel resizer    — drag-to-resize logic
+         13. Guided tour          — step-by-step overlay
+         14. Map controls         — legend toggle, basemap toggle
+         15. Draggable popup      — mouse/touch drag for the popup window
+       ============================================================ -->
+  <script>
+
+    /* ============================================================
+       1. CONFIGURATION
+       ============================================================
+       These are the values you are most likely to want to change.
+       Everything else in the JavaScript reads from these constants.
+       ============================================================ */
+
+    /** URL to the CSV on GitHub Pages — must be publicly accessible */
+    const CSV_URL = "https://paladindanse111.github.io/AFSC-PDFs/USAF_Bases_Long_Format_v9.csv";
+
+    /**
+     * Path to the aircraft image folder on GitHub Pages.
+     * TO CUSTOMIZE: if you rename or move the folder, update this value.
+     * Images are referenced as: AIRCRAFT_IMAGE_PATH + IMAGE_MAP[aircraftName]
+     */
+    const AIRCRAFT_IMAGE_PATH = "https://paladindanse111.github.io/AFSC-PDFs/aircraft_images/";
+
+    /** Zoom level when the page first loads */
+    const DEFAULT_ZOOM = 4;
+
+    /** Zoom level when flying to a selected base */
+    const BASE_ZOOM = 11;
+
+    /** [longitude, latitude] — starting map center (continental USA) */
+    const DEFAULT_CENTER = [-95.7129, 37.0902];
+
+    /*
+    PIN COLORS  — [Red, Green, Blue, Opacity]
+    ─────────────────────────────────────────
+    Each base type has four states:
+      DEF  = default (unselected, no filter active)
+      SEL  = this base is the selected base
+      FILT = this base matches the active AFSC/Aircraft filter
+      SF   = this base is selected AND the filter matches it
+
+    If you change these, also update the matching .legend-dot colors in
+    the HTML and CSS above so the legend stays accurate.
+    */
+
+    /* Active Duty — shades of red */
+    const PIN_AD_DEF  = [185,  28,  28, 1.0];   /* default red        */
+    const PIN_AD_SEL  = [255, 255, 255, 1.0];   /* white when selected */
+    const PIN_AD_FILT = [234,  88,  12, 1.0];   /* orange when filtered */
+    const PIN_AD_SF   = [250, 204,  21, 1.0];   /* yellow: selected + filtered */
+
+    /* Air National Guard — shades of purple */
+    const PIN_ANG_DEF  = [124,  58, 237, 1.0];
+    const PIN_ANG_SEL  = [255, 255, 255, 1.0];
+    const PIN_ANG_FILT = [167, 139, 250, 1.0];
+    const PIN_ANG_SF   = [250, 204,  21, 1.0];
+
+    /* Reserve — shades of teal */
+    const PIN_RES_DEF  = [  6, 120,  90, 1.0];
+    const PIN_RES_SEL  = [255, 255, 255, 1.0];
+    const PIN_RES_FILT = [ 52, 211, 153, 1.0];
+    const PIN_RES_SF   = [250, 204,  21, 1.0];
+
+    /** Faded color for bases that don't match the current filter */
+    const PIN_FADED = [255, 69, 0, 0.15];
+
+    /* ROTC pin colors — amber/gold */
+    const PIN_ROTC_DEF  = [217, 119,   6, 1.0];
+    const PIN_ROTC_SEL  = [255, 255, 255, 1.0];
+    const PIN_ROTC_FILT = [252, 211, 77,  1.0];
+    const PIN_ROTC_SF   = [250, 204,  21, 1.0];
+
+    /* Detachment pin colors — cyan */
+    const PIN_DET_DEF  = [8,  145, 178, 1.0];
+    const PIN_DET_SEL  = [255, 255, 255, 1.0];
+    const PIN_DET_FILT = [103, 232, 249, 1.0];
+    const PIN_DET_SF   = [250, 204,  21, 1.0];
+
+    /** Default pin diameter in pixels */
+    const PIN_SIZE = 8;
+
+    /** Pin diameter when that base is selected */
+    const PIN_SEL_SIZE = 14;
+
+    /** Basemap IDs — used by toggleBasemap() */
+    const BASEMAP_DARK      = "dark-gray-vector";
+    const BASEMAP_SATELLITE = "hybrid";
+
+    /*
+    AIRCRAFT IMAGE MAP
+    ──────────────────
+    Maps each aircraft name (as it appears in the CSV) to its image filename
+    in the aircraft_images/ folder.
+    TO CUSTOMIZE: add or change entries here if you rename image files.
+    Format: 'CSV aircraft name': 'filename.ext'
+    */
+    const AIRCRAFT_IMAGE_MAP = {
+      'A-10':       'A-10.avif',
+      'AC-130J':    'AC-130J.avif',
+      'B-1':        'B-1.jpg',
+      'B-2':        'B-2.avif',
+      'B-21':       'B-21.avif',
+      'B-52':       'B-52.avif',
+      'C-12':       'C-12.avif',
+      'C-130J':     'C-130J.avif',
+      'C-17':       'C-17.avif',
+      'C-21':       'C-21.avif',
+      'C-32':       'C-32.jpg',
+      'C-40':       'C-40.avif',
+      'C-5':        'C-5.jpg',
+      'CV-22':      'CV-22.avif',
+      'E-3':        'E-3.avif',
+      'E-4':        'E-4.avif',
+      'E-8':        'E-8.avif',
+      'EC-130':     'EC-130.jfif',
+      'F-15':       'F-15.avif',
+      'F-15E':      'F-15E.avif',
+      'F-16':       'F-16.avif',
+      'F-22':       'F-22.avif',
+      'F-35':       'F-35.avif',
+      'HC-130 P/N': 'HC-130 P-N.avif',
+      'HC-130J':    'HC-130J.avif',
+      'HH-60':      'HH-60.avif',
+      'KC-10':      'KC-10.avif',
+      'KC-135':     'KC-135.avif',
+      'KC-46':      'KC-46.avif',
+      'MC-130J':    'MC-130J.avif',
+      'OA-1K':      'OA-1K.jfif',
+      'RC-135':     'RC-135.avif',
+      'T-38':       'T-38.avif',
+      'T-6':        'T-6.avif',
+      'T-7':        'T-7.jpeg',
+      'U-2':        'U-2.avif',
+      'U-28':       'U-28.avif',
+      'UH-1N':      'UH-1N.avif',
+      'VC-25':      'VC-25.avif',
+      'WC-135R':    'WC-135R.avif',
+    };
+
+
+    /* ============================================================
+       2. STATE
+       ============================================================
+       These variables are read and written by many functions.
+       They represent "what the user has currently selected."
+       ============================================================ */
+
+    let allData     = [];     /* all rows from the CSV, parsed into objects */
+    let currentBase = "";     /* name of the selected base, or "" for none  */
+    let currentAFSC = "";     /* selected AFSC code, or ""                  */
+    let currentAC   = "";     /* selected aircraft type, or ""              */
+    let currentView = "afsc"; /* which tab is active: "afsc" or "base"      */
+    let mapView     = null;   /* the ArcGIS MapView object                  */
+    let graphicsLayer = null; /* the ArcGIS layer that holds the pins       */
+
+    /*
+    isUpdating — infinite-loop guard for dropdown rebuilds.
+    When populateAllDropdowns() rebuilds the <select> elements it
+    triggers their "change" events.  Setting isUpdating = true tells
+    those handlers to ignore the event so we don't recurse forever.
+    */
+    let isUpdating = false;
+
+
+    /* ============================================================
+       3. UTILITY HELPERS
+       ============================================================ */
+
+    /**
+     * Returns the current state of the three base-type checkboxes.
+     * Used by isBaseVisible() and populateAllDropdowns().
+     */
+    function getChecked() {
+      return {
+        active:  document.getElementById("chk-active").checked,
+        ang:     document.getElementById("chk-ang").checked,
+        reserve: document.getElementById("chk-reserve").checked,
+        rotc:    document.getElementById("chk-rotc").checked,
+        det:     document.getElementById("chk-det").checked,
+        fds:     document.getElementById("chk-fds").checked,
+      };
+    }
+
+    /** Toggles the abbreviation slide-out panel */
+    function toggleAbbrev() {
+      const panel = document.getElementById("abbrev-panel");
+      const arrow = document.getElementById("abbrev-arrow");
+      panel.classList.toggle("open");
+      arrow.classList.toggle("open");
+    }
+
+    /**
+     * Returns true if a data row should appear given the checkbox state.
+     * Base_Type values in the v9 CSV: "Active Duty","ANG","Reserve","ROTC","Detachment"
+     * First_Duty_Station: "Yes" or "No"
+     */
+    function isBaseVisible(row) {
+      const c = getChecked();
+      const t = (row.Base_Type || "Active Duty").trim();
+      const fds = (row.First_Duty_Station || "No").trim();
+
+      if (t === "Active Duty" && !c.active)  return false;
+      if (t === "ANG"         && !c.ang)     return false;
+      if (t === "Reserve"     && !c.reserve) return false;
+      if (t === "ROTC"        && !c.rotc)    return false;
+      if (t === "Detachment"  && !c.det)     return false;
+
+      /* First Duty Station filter — when checked, hide non-FDS bases */
+      if (c.fds && fds !== "Yes") return false;
+
+      return true;
+    }
+
+    /**
+     * Called whenever a checkbox changes.
+     * Rebuilds the dropdowns and map pins without resetting the current
+     * Base / AFSC / Aircraft selection.
+     */
+    function onCheckboxChange() {
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateMapPins();
+      updateStatus();
+    }
+
+    /**
+     * Debounce — wraps a function so it only runs after `delay` ms of
+     * silence.  Used on updateMapPins() to prevent rapid-fire redraws
+     * from stacking up and freezing the UI.
+     */
+    function debounce(fn, delay) {
+      let timer;
+      return function(...args) {
+        clearTimeout(timer);
+        timer = setTimeout(() => fn.apply(this, args), delay);
+      };
+    }
+
+    /**
+     * Converts a DMS coordinate string (e.g. 39°27'47"N) to decimal
+     * degrees (e.g. 39.4631).  South and West directions are negative.
+     * The ArcGIS map requires decimal degrees; the CSV stores DMS.
+     */
+    function dmsToDecimal(dmsStr) {
+      if (!dmsStr) return null;
+      const match = dmsStr.match(/(\d+)°(\d+)'([\d.]+)"([NSEW])/);
+      if (!match) return null;
+      let decimal = parseFloat(match[1])
+                  + parseFloat(match[2]) / 60
+                  + parseFloat(match[3]) / 3600;
+      if (match[4] === 'S' || match[4] === 'W') decimal = -decimal;
+      return decimal;
+    }
+
+
+    /* ============================================================
+       4. MAP INITIALIZATION
+       ============================================================
+       Uses Esri's require() to load only the four SDK modules we need.
+       If the SDK fails to load (e.g. opened as a local file instead of
+       via a web server) a readable error message is shown instead of a
+       silent blank panel.
+       ============================================================ */
+
+    if (typeof require === "undefined") {
+      /* SDK didn't load — show a helpful message */
+      document.getElementById("map-view").innerHTML =
+        '<div style="display:flex;align-items:center;justify-content:center;height:100%;' +
+        'color:#7a8aaa;font-family:sans-serif;font-size:13px;text-align:center;padding:20px;">' +
+        '<div>&#9888;&#65039; Map failed to load.<br><br>' +
+        'This page must be served from a web server (GitHub Pages).<br>' +
+        'It will not work when opened as a local file.</div></div>';
+    } else {
+
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic"
+    ], function(Map, MapView, GraphicsLayer, Graphic) {
+
+      /* GraphicsLayer holds all of the base pins */
+      graphicsLayer = new GraphicsLayer();
+
+      const map = new Map({
+        /*
+        Basemap options: "dark-gray-vector", "hybrid", "streets-night-vector"
+        We use dark-gray-vector because it works at all zoom levels without
+        switching (switching basemaps at runtime can cause browser freezes).
+        */
+        basemap: BASEMAP_DARK,
+        layers:  [graphicsLayer]
+      });
+
+      mapView = new MapView({
+        container: "map-view",
+        map:       map,
+        center:    DEFAULT_CENTER,
+        zoom:      DEFAULT_ZOOM,
+        ui:        { components: ["zoom"] } /* hide the default home/search widgets */
+      });
+
+      /*
+      Pin click handler.
+      "immediate-click" fires as soon as the finger/mouse lifts, before any
+      double-click delay.  tolerance: 16 gives a wider hit target so small
+      pins are easier to tap on mobile.
+      */
+      mapView.on("immediate-click", function(event) {
+        mapView.hitTest(event, { tolerance: 16 }).then(function(response) {
+          const hit = response.results.find(
+            r => r.type === "graphic" &&
+                 r.graphic &&
+                 r.graphic.attributes &&
+                 r.graphic.attributes.Base
+          );
+          if (hit) {
+            /* A pin was clicked — select that base */
+            const clickedBase = hit.graphic.attributes.Base;
+            currentBase = clickedBase;
+            isUpdating = true;
+            document.getElementById("base-select").value = clickedBase;
+            isUpdating = false;
+            populateAllDropdowns(currentBase, currentAFSC, currentAC);
+            updateIframe();
+            updateStatus();
+            updateClearButtons();
+            updateSelectionDisplays();
+            updateMapPins();
+            flyToBase(clickedBase);
+            showPopup(clickedBase, event.x, event.y);
+          } else {
+            /* Clicked empty map — close the popup */
+            closePopup();
+          }
+        });
+      });
+
+      /* Load the CSV once the map is ready */
+      mapView.when(function() { loadData(); });
+
+    }); /* end require() */
+    }   /* end SDK check */
+
+
+    /* ============================================================
+       5. CSV LOADING AND PARSING
+       ============================================================
+       Fetches the CSV from GitHub Pages.  The ?nocache= timestamp
+       prevents the browser from serving a stale cached version.
+       parseCSV() handles BOM characters, Windows line endings, and
+       quoted fields that contain commas.
+       ============================================================ */
+
+    async function loadData() {
+      try {
+        const response = await fetch(CSV_URL + "?nocache=" + Date.now());
+        const text     = await response.text();
+        allData        = parseCSV(text);
+        isUpdating     = false;
+        populateAllDropdowns("", "", "");
+        updateMapPins();
+        updateStatus();
+      } catch (err) {
+        console.error("Failed to load CSV:", err);
+        document.getElementById("status-label").textContent = "Error loading data. Check CSV_URL.";
+      }
+    }
+
+    function parseCSV(text) {
+      /* Strip BOM and normalize line endings */
+      text = text.replace(/^\uFEFF/, "").replace(/\r\n/g, "\n").replace(/\r/g, "\n");
+      const lines   = text.trim().split("\n");
+      const headers = parseCSVLine(lines[0]);
+      const result  = [];
+      for (let i = 1; i < lines.length; i++) {
+        if (!lines[i].trim()) continue;
+        const values = parseCSVLine(lines[i]);
+        const row    = {};
+        headers.forEach((h, idx) => { row[h.trim()] = (values[idx] || "").trim(); });
+        result.push(row);
+      }
+      return result;
+    }
+
+    /** Handles quoted fields that may contain commas (e.g. coordinate strings) */
+    function parseCSVLine(line) {
+      const result = [];
+      let current = "", inQuotes = false;
+      for (let i = 0; i < line.length; i++) {
+        const ch = line[i];
+        if (ch === '"') {
+          if (inQuotes && line[i+1] === '"') { current += '"'; i++; } /* escaped quote */
+          else { inQuotes = !inQuotes; }
+        } else if (ch === ',' && !inQuotes) {
+          result.push(current); current = "";
+        } else {
+          current += ch;
+        }
+      }
+      result.push(current);
+      return result;
+    }
+
+
+    /* ============================================================
+       6. MAP PINS
+       ============================================================
+       Clears and redraws every pin whenever the selection changes.
+       Wrapped in debounce(150ms) so rapid changes don't stack up.
+
+       Color logic (per base, per type):
+         No filter active  → default type color (red/purple/teal)
+         Matches filter    → filtered color (orange/light-purple/teal)
+         Selected base     → white (large)
+         Selected + filter → yellow (large)
+         Doesn't match     → faded (small, almost invisible)
+       ============================================================ */
+
+    const updateMapPins = debounce(function() {
+      if (!graphicsLayer) return;
+      graphicsLayer.removeAll();
+
+      /* De-duplicate: one entry per base (the CSV has many rows per base) */
+      const baseMap = new Map();
+      allData.forEach(row => { if (!baseMap.has(row.Base)) baseMap.set(row.Base, row); });
+
+      /* Which bases match the AFSC filter? (null = no filter) */
+      const matchingByAFSC = currentAFSC
+        ? new Set(allData.filter(r => r.AFSC_Code === currentAFSC).map(r => r.Base))
+        : null;
+
+      /* Which bases match the Aircraft filter? (null = no filter) */
+      const matchingByAC = currentAC
+        ? new Set(allData.filter(r => r.Aircraft === currentAC).map(r => r.Base))
+        : null;
+
+      /* A base must satisfy ALL active filters to be "matching" */
+      const matchingBases = (matchingByAFSC || matchingByAC)
+        ? new Set([...baseMap.keys()].filter(b => {
+            if (matchingByAFSC && !matchingByAFSC.has(b)) return false;
+            if (matchingByAC   && !matchingByAC.has(b))   return false;
+            return true;
+          }))
+        : null;
+
+      baseMap.forEach((row, baseName) => {
+        /* Skip bases hidden by the type checkboxes */
+        if (!isBaseVisible(row)) return;
+
+        const lat = dmsToDecimal(row.Latitude);
+        const lon = dmsToDecimal(row.Longitude);
+        if (lat === null || lon === null) return;
+
+        /* Determine which color family to use based on base type */
+        const btype = (row.Base_Type || "Active Duty").trim();
+        let defC, filtC, sfC;
+        if      (btype === "ANG")        { defC = PIN_ANG_DEF;  filtC = PIN_ANG_FILT;  sfC = PIN_ANG_SF;  }
+        else if (btype === "Reserve")    { defC = PIN_RES_DEF;  filtC = PIN_RES_FILT;  sfC = PIN_RES_SF;  }
+        else if (btype === "ROTC")       { defC = PIN_ROTC_DEF; filtC = PIN_ROTC_FILT; sfC = PIN_ROTC_SF; }
+        else if (btype === "Detachment") { defC = PIN_DET_DEF;  filtC = PIN_DET_FILT;  sfC = PIN_DET_SF;  }
+        else                             { defC = PIN_AD_DEF;   filtC = PIN_AD_FILT;   sfC = PIN_AD_SF;   }
+
+        /* Determine state flags */
+        const isSelected = baseName === currentBase;
+        const isFiltered = matchingBases && matchingBases.has(baseName);
+        const isOther    = matchingBases && !matchingBases.has(baseName);
+        const isSelFilt  = isSelected && matchingBases;
+
+        /* Choose final color and size */
+        let color, size, outlineWidth;
+        if      (isSelFilt)  { color = sfC;          size = PIN_SEL_SIZE; outlineWidth = 2; }
+        else if (isSelected) { color = [255,255,255,1]; size = PIN_SEL_SIZE; outlineWidth = 2; }
+        else if (isFiltered) { color = filtC;        size = PIN_SIZE + 2; outlineWidth = 1; }
+        else if (isOther)    { color = PIN_FADED;    size = PIN_SIZE - 2; outlineWidth = 0; }
+        else                 { color = defC;         size = PIN_SIZE;     outlineWidth = 1; }
+
+        graphicsLayer.add({
+          geometry:   { type: "point", longitude: lon, latitude: lat },
+          symbol:     {
+            type:    "simple-marker",
+            style:   "circle",
+            color,
+            size:    size + "px",
+            outline: { color: [255, 255, 255, outlineWidth > 0 ? 0.4 : 0], width: outlineWidth }
+          },
+          attributes: { Base: baseName }
+        });
+      });
+    }, 150); /* 150ms debounce */
+
+
+    /* ============================================================
+       7. MAP NAVIGATION
+       ============================================================ */
+
+    /** Smoothly flies the map to a base and shows the floating label. */
+    function flyToBase(baseName) {
+      if (!mapView || !baseName) return;
+      const row = allData.find(r => r.Base === baseName);
+      if (!row) return;
+      const lat = dmsToDecimal(row.Latitude);
+      const lon = dmsToDecimal(row.Longitude);
+      if (lat === null || lon === null) return;
+      mapView.goTo(
+        { center: [lon, lat], zoom: BASE_ZOOM },
+        { duration: 800, easing: "ease-in-out" }
+      );
+      const label = document.getElementById("map-label");
+      label.textContent = baseName;
+      label.style.display = "block";
+    }
+
+    /** Returns the map to its default center and zoom. */
+    function resetMapView() {
+      if (!mapView) return;
+      mapView.goTo(
+        { center: DEFAULT_CENTER, zoom: DEFAULT_ZOOM },
+        { duration: 600, easing: "ease-out" }
+      );
+      document.getElementById("map-label").style.display = "none";
+    }
+
+
+    /* ============================================================
+       8. CASCADING DROPDOWNS
+       ============================================================
+       All three dropdowns (Base, AFSC, Aircraft) filter each other:
+         • Selecting a Base  → AFSC/Aircraft lists narrow to that base
+         • Selecting an AFSC → Base/Aircraft lists narrow to that AFSC
+         • Selecting Aircraft→ Base/AFSC lists narrow to that aircraft
+       The isUpdating guard stops dropdown rebuilds from triggering
+       their own "change" events and causing an infinite loop.
+       ============================================================ */
+
+    function populateAllDropdowns(filterBase, filterAFSC, filterAC) {
+      isUpdating = true;
+
+      /* Only include rows whose base type is currently checked */
+      const visible = allData.filter(r => isBaseVisible(r));
+
+      /* ── Base dropdown ── */
+      const baseSelect = document.getElementById("base-select");
+      let basesToShow  = [...new Set(visible.map(r => r.Base))].sort();
+      if (filterAFSC) basesToShow = basesToShow.filter(b => visible.some(r => r.Base === b && r.AFSC_Code  === filterAFSC));
+      if (filterAC)   basesToShow = basesToShow.filter(b => visible.some(r => r.Base === b && r.Aircraft   === filterAC));
+      baseSelect.innerHTML = `<option value="">&#8212; All Bases &#8212;</option>`;
+      basesToShow.forEach(base => {
+        const opt = document.createElement("option");
+        opt.value = base; opt.textContent = base;
+        if (base === filterBase) opt.selected = true;
+        baseSelect.appendChild(opt);
+      });
+
+      /* ── AFSC dropdown ── */
+      const afscSelect = document.getElementById("afsc-select");
+      let afscData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
+      if (filterAC)  afscData = afscData.filter(r => r.Aircraft === filterAC);
+      const afscMap = new Map();
+      afscData.forEach(r => {
+        /* NONE is a placeholder used for ANG/Reserve bases with no AFSCs */
+        if (r.AFSC_Code && r.AFSC_Code !== "NONE" && !afscMap.has(r.AFSC_Code))
+          afscMap.set(r.AFSC_Code, r.AFSC_Full_Name);
+      });
+      afscSelect.innerHTML = `<option value="">&#8212; All AFSCs &#8212;</option>`;
+      [...afscMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([code, name]) => {
+        const opt = document.createElement("option");
+        opt.value = code; opt.textContent = name;
+        if (code === filterAFSC) opt.selected = true;
+        afscSelect.appendChild(opt);
+      });
+
+      /* ── Aircraft dropdown ── */
+      const acSelect = document.getElementById("aircraft-select");
+      let acData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
+      if (filterAFSC) acData = acData.filter(r => r.AFSC_Code === filterAFSC);
+      const acSet = new Set(acData.map(r => r.Aircraft).filter(Boolean));
+      acSelect.innerHTML = `<option value="">&#8212; All Aircraft &#8212;</option>`;
+      [...acSet].sort().forEach(ac => {
+        const opt = document.createElement("option");
+        opt.value = ac; opt.textContent = ac;
+        if (ac === filterAC) opt.selected = true;
+        acSelect.appendChild(opt);
+      });
+
+      isUpdating = false;
+    }
+
+    /* Dropdown event listeners — each clears the other two selections */
+    document.getElementById("base-select").addEventListener("change", function() {
+      if (isUpdating) return;
+      currentBase = this.value; currentAFSC = ""; currentAC = "";
+      isUpdating = true;
+      document.getElementById("afsc-select").value     = "";
+      document.getElementById("aircraft-select").value = "";
+      isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      if (currentBase) flyToBase(currentBase); else resetMapView();
+    });
+
+    document.getElementById("afsc-select").addEventListener("change", function() {
+      if (isUpdating) return;
+      currentAFSC = this.value; currentBase = ""; currentAC = "";
+      isUpdating = true;
+      document.getElementById("base-select").value     = "";
+      document.getElementById("aircraft-select").value = "";
+      isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      if (!currentBase) resetMapView();
+    });
+
+    document.getElementById("aircraft-select").addEventListener("change", function() {
+      if (isUpdating) return;
+      currentAC = this.value; currentBase = ""; currentAFSC = "";
+      isUpdating = true;
+      document.getElementById("base-select").value  = "";
+      document.getElementById("afsc-select").value  = "";
+      isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      if (!currentBase) resetMapView();
+    });
+
+    /* Clear button handlers — each resets its own filter only */
+    function clearBase() {
+      currentBase = "";
+      isUpdating = true; document.getElementById("base-select").value = ""; isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      resetMapView(); closePopup();
+    }
+    function clearAFSC() {
+      currentAFSC = "";
+      isUpdating = true; document.getElementById("afsc-select").value = ""; isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      if (!currentBase) resetMapView();
+    }
+    function clearAircraft() {
+      currentAC = "";
+      isUpdating = true; document.getElementById("aircraft-select").value = ""; isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      if (!currentBase) resetMapView();
+    }
+
+
+    /* ============================================================
+       9. CONTENT PANEL (IFRAME)
+       ============================================================
+       Decides what URL to load in the iframe based on the selection:
+         Base + AFSC  → PDF_URL (AFSC page) or Base_URL (base site)
+         Base only    → Base_URL
+         AFSC only    → PDF_URL
+         Aircraft only→ placeholder (no single page to show)
+         Nothing      → placeholder
+
+       If the URL is missing from the CSV (empty string), the
+       no-info-panel is shown with a relevant icon and message.
+       ============================================================ */
+
+    /** Switches the content panel between "afsc", "base", and "airframe" tabs. */
+    function setView(view) {
+      currentView = view;
+      document.getElementById("btn-afsc").classList.toggle("active",     view === "afsc");
+      document.getElementById("btn-base").classList.toggle("active",     view === "base");
+      document.getElementById("btn-airframe").classList.toggle("active", view === "airframe");
+      updateIframe();
+    }
+
+    /**
+     * Shows the aircraft photo panel for a given aircraft name.
+     * Looks up the image filename from AIRCRAFT_IMAGE_MAP and sets the
+     * img src. If no image is mapped, falls back to the no-info panel.
+     */
+    function showAirframePhoto(aircraftName) {
+      const frame      = document.getElementById("content-frame");
+      const placeholder= document.getElementById("placeholder");
+      const panel      = document.getElementById("airframe-panel");
+      const img        = document.getElementById("airframe-img");
+      const caption    = document.getElementById("airframe-caption");
+
+      /* Hide everything else */
+      frame.style.display       = "none";
+      frame.src                 = "";
+      placeholder.style.display = "none";
+      hideNoInfo();
+
+      const filename = AIRCRAFT_IMAGE_MAP[aircraftName];
+      if (!filename) {
+        panel.classList.remove("visible");
+        showNoInfo("\u2708\uFE0F", "No Photo Available", "No image on file for " + aircraftName + ".");
+        return;
+      }
+
+      img.src           = AIRCRAFT_IMAGE_PATH + filename;
+      img.alt           = aircraftName;
+      caption.textContent = aircraftName;
+      panel.classList.add("visible");
+    }
+
+    function hideAirframePanel() {
+      document.getElementById("airframe-panel").classList.remove("visible");
+    }
+
+    /** Shows the no-info placeholder with a custom icon, title, and subtitle. */
+    function showNoInfo(icon, title, sub) {
+      document.getElementById("content-frame").style.display = "none";
+      document.getElementById("content-frame").src           = "";
+      document.getElementById("placeholder").style.display   = "none";
+      document.getElementById("loading-bar").classList.remove("active");
+      document.getElementById("no-info-icon").textContent    = icon;
+      document.getElementById("no-info-title").textContent   = title;
+      document.getElementById("no-info-sub").textContent     = sub;
+      document.getElementById("no-info-panel").classList.add("visible");
+    }
+
+    function hideNoInfo() {
+      document.getElementById("no-info-panel").classList.remove("visible");
+    }
+
+    function updateIframe() {
+      const frame      = document.getElementById("content-frame");
+      const placeholder= document.getElementById("placeholder");
+      const loadingBar = document.getElementById("loading-bar");
+      const toggleBar  = document.getElementById("toggle-bar");
+      const btnAirframe= document.getElementById("btn-airframe");
+      hideNoInfo();
+      hideAirframePanel();
+
+      /*
+      Determine which aircraft to show a photo for:
+        - If an aircraft is directly selected, use that.
+        - If a base+AFSC are selected, find the aircraft at that base
+          (first one alphabetically) so the Airframe tab is always usable.
+      */
+      let photoAC = currentAC;
+      if (!photoAC && currentBase) {
+        const baseAC = [...new Set(
+          allData.filter(r => r.Base === currentBase && r.Aircraft).map(r => r.Aircraft)
+        )].sort();
+        if (baseAC.length > 0) photoAC = baseAC[0];
+      }
+
+      /* Show/hide the Airframe button — only when there's a photo to show */
+      btnAirframe.style.display = photoAC ? "inline-block" : "none";
+
+      /* If airframe view is active but there's no photo, fall back to afsc */
+      if (currentView === "airframe" && !photoAC) currentView = "afsc";
+
+      /* Airframe view — show the photo panel and return early */
+      if (currentView === "airframe" && photoAC) {
+        loadingBar.classList.remove("active");
+        frame.style.display = "none"; frame.src = "";
+        placeholder.style.display = "none";
+        showAirframePhoto(photoAC);
+        /* Keep the toggle bar visible so user can switch back */
+        if (currentBase || currentAFSC || currentAC) toggleBar.classList.add("visible");
+        return;
+      }
+
+      let url = "";
+
+      if (currentBase && currentAFSC) {
+        /* Both selected — load AFSC or Base page, show the full toggle bar */
+        const match = allData.find(r => r.Base === currentBase && r.AFSC_Code === currentAFSC);
+        if (match) url = currentView === "base" ? match.Base_URL : match.PDF_URL;
+        toggleBar.classList.add("visible");
+
+      } else if (currentBase) {
+        const match = allData.find(r => r.Base === currentBase);
+        url = match ? match.Base_URL : "";
+        toggleBar.classList.add("visible"); currentView = "afsc";
+
+      } else if (currentAFSC) {
+        const match = allData.find(r => r.AFSC_Code === currentAFSC);
+        url = match ? match.PDF_URL : "";
+        toggleBar.classList.add("visible"); currentView = "afsc";
+
+      } else if (currentAC) {
+        /* Aircraft-only — show Airframe tab in toggle bar, default to photo */
+        toggleBar.classList.add("visible");
+        currentView = "airframe";
+        loadingBar.classList.remove("active");
+        frame.style.display = "none"; frame.src = "";
+        placeholder.style.display = "none";
+        showAirframePhoto(currentAC);
+        return;
+
+      } else {
+        /* Nothing selected */
+        toggleBar.classList.remove("visible"); currentView = "afsc";
+      }
+
+      /* Show no-info panel if URL is empty */
+      if (!url && (currentBase || currentAFSC)) {
+        if (currentView === "base" || (!currentAFSC && currentBase)) {
+          showNoInfo("\uD83C\uDFE0", "No Base Info", "No website available for this installation.");
+        } else {
+          showNoInfo("\uD83D\uDCC4", "No AFSC Info PDF", "No PDF page available for this specialty code.");
+        }
+        return;
+      }
+
+      /* Load the URL or show the default placeholder */
+      if (url) {
+        loadingBar.classList.add("active");
+        frame.src = url; frame.style.display = "block"; placeholder.style.display = "none";
+        frame.onload = () => loadingBar.classList.remove("active");
+      } else {
+        frame.style.display = "none"; frame.src = "";
+        placeholder.style.display = "flex";
+        loadingBar.classList.remove("active");
+      }
+    }
+
+
+    /* ============================================================
+       10. STATUS BAR, CLEAR BUTTONS, SELECTION LABELS
+       ============================================================ */
+
+    /** Updates the large number and label at the bottom of the left panel. */
+    function updateStatus() {
+      const countEl = document.getElementById("status-count");
+      const labelEl = document.getElementById("status-label");
+
+      if (!currentBase && !currentAFSC && !currentAC) {
+        /* No filter — count all visible bases */
+        const visCount = [...new Set(allData.filter(r => isBaseVisible(r)).map(r => r.Base))].length;
+        countEl.textContent = visCount;
+        labelEl.textContent = "bases visible on map";
+        return;
+      }
+
+      const matches = allData.filter(r =>
+        isBaseVisible(r) &&
+        (!currentBase || r.Base      === currentBase) &&
+        (!currentAFSC  || r.AFSC_Code === currentAFSC) &&
+        (!currentAC    || r.Aircraft  === currentAC)
+      );
+      const uniqueBases = new Set(matches.map(r => r.Base));
+      countEl.textContent = uniqueBases.size;
+
+      if      (currentBase && currentAFSC) labelEl.textContent = `result for ${currentBase} / ${currentAFSC}`;
+      else if (currentBase && currentAC)   labelEl.textContent = `result for ${currentBase} / ${currentAC}`;
+      else if (currentBase)                labelEl.textContent = `AFSCs at ${currentBase}`;
+      else if (currentAFSC)                labelEl.textContent = `base${uniqueBases.size !== 1 ? "s" : ""} with ${currentAFSC}`;
+      else if (currentAC)                  labelEl.textContent = `base${uniqueBases.size !== 1 ? "s" : ""} flying ${currentAC}`;
+    }
+
+    /** Shows or hides each "Clear" button depending on whether that filter is set. */
+    function updateClearButtons() {
+      document.getElementById("base-clear-btn").style.display     = currentBase ? "block" : "none";
+      document.getElementById("afsc-clear-btn").style.display     = currentAFSC ? "block" : "none";
+      document.getElementById("aircraft-clear-btn").style.display = currentAC   ? "block" : "none";
+    }
+
+    /** Updates the small display chips that show the current selection text. */
+    function updateSelectionDisplays() {
+      const bd = document.getElementById("base-display");
+      const ad = document.getElementById("afsc-display");
+      const cd = document.getElementById("aircraft-display");
+
+      if (currentBase) { bd.style.display = "block"; bd.textContent = currentBase; }
+      else               bd.style.display = "none";
+
+      if (currentAFSC) {
+        ad.style.display = "block";
+        const match = allData.find(r => r.AFSC_Code === currentAFSC);
+        ad.textContent = match ? match.AFSC_Full_Name : currentAFSC;
+      } else { ad.style.display = "none"; }
+
+      if (currentAC) { cd.style.display = "block"; cd.textContent = currentAC; }
+      else             cd.style.display = "none";
+    }
+
+
+    /* ============================================================
+       11. BASE POPUP
+       ============================================================
+       showPopup() builds and positions the popup when a pin is clicked.
+       It displays:
+         • A base-type badge (Active Duty / ANG / Reserve)
+         • Clickable aircraft tags (each sets the Aircraft filter)
+         • A scrollable list of AFSCs at that base
+       The popup is positioned to avoid going off-screen.
+       ============================================================ */
+
+    function showPopup(baseName, clickX, clickY) {
+      const popup     = document.getElementById("map-popup");
+      const nameEl    = document.getElementById("popup-base-name");
+      const listEl    = document.getElementById("popup-afsc-list");
+      const mapPanel  = document.querySelector(".map-panel");
+      const panelRect = mapPanel.getBoundingClientRect();
+
+      nameEl.textContent = baseName;
+
+      /* ── Base type badge ── */
+      const baseRow = allData.find(r => r.Base === baseName);
+      const btype   = (baseRow && baseRow.Base_Type) ? baseRow.Base_Type.trim() : "Active Duty";
+      const existing = popup.querySelector(".popup-type-badge");
+      if (existing) existing.remove();
+      const badge = document.createElement("div");
+      const badgeClass = btype === "ANG" ? "ang"
+                       : btype === "Reserve" ? "reserve"
+                       : btype === "ROTC" ? "rotc"
+                       : btype === "Detachment" ? "detachment"
+                       : "active-duty";
+      badge.className = "popup-type-badge " + badgeClass;
+      badge.textContent = btype;
+      nameEl.parentNode.insertBefore(badge, nameEl);
+
+      /* ── Aircraft tags ── */
+      const acSection = document.getElementById("popup-aircraft-section");
+      const acTagsEl  = document.getElementById("popup-aircraft-tags");
+      const baseAC    = [...new Set(allData.filter(r => r.Base === baseName && r.Aircraft).map(r => r.Aircraft))].sort();
+      if (baseAC.length > 0) {
+        acSection.style.display = "block";
+        acTagsEl.innerHTML      = "";
+        baseAC.forEach(ac => {
+          const tag = document.createElement("div");
+          tag.className = "popup-aircraft-tag" + (ac === currentAC ? " selected" : "");
+          tag.textContent = ac;
+          tag.addEventListener("click", () => selectAircraftFromPopup(ac));
+          acTagsEl.appendChild(tag);
+        });
+      } else {
+        acSection.style.display = "none";
+      }
+
+      /* ── AFSC list ── */
+      const afscRows = [];
+      const seen     = new Set();
+      allData.filter(r => r.Base === baseName).forEach(r => {
+        if (r.AFSC_Code && r.AFSC_Code !== "NONE" && !seen.has(r.AFSC_Code)) {
+          seen.add(r.AFSC_Code);
+          afscRows.push({ code: r.AFSC_Code, name: r.AFSC_Full_Name });
+        }
+      });
+      afscRows.sort((a, b) => a.code.localeCompare(b.code));
+      listEl.innerHTML = "";
+      if (afscRows.length === 0) {
+        listEl.innerHTML = '<div style="padding:10px 12px;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.05em;">No AFSCs assigned</div>';
+      } else {
+        afscRows.forEach(afsc => {
+          const row = document.createElement("div");
+          row.className = "popup-afsc-row" + (afsc.code === currentAFSC ? " selected" : "");
+          row.innerHTML = `<div class="popup-afsc-code">${afsc.code}</div>
+                           <div class="popup-afsc-name">${afsc.name}</div>`;
+          row.addEventListener("click", () => selectAfscFromPopup(afsc.code));
+          listEl.appendChild(row);
+        });
+      }
+
+      /* ── Position the popup so it stays within the map panel ── */
+      const POPUP_W = 280, POPUP_H = 420, OFFSET = 14, MARGIN = 20;
+      let left = clickX - panelRect.left + OFFSET;
+      let top  = clickY - panelRect.top  + OFFSET;
+      const maxLeft = panelRect.width - POPUP_W - MARGIN;
+
+      if (left > maxLeft)                         left = clickX - panelRect.left - POPUP_W - OFFSET;
+      if (top + POPUP_H > panelRect.height - 10)  top  = clickY - panelRect.top  - POPUP_H - OFFSET;
+      left = Math.max(8, Math.min(left, maxLeft));
+      top  = Math.max(8, Math.min(top,  panelRect.height - POPUP_H - 8));
+
+      popup.style.left = left + "px";
+      popup.style.top  = top  + "px";
+      popup.classList.add("visible");
+    }
+
+    function closePopup() {
+      document.getElementById("map-popup").classList.remove("visible");
+    }
+
+    /** Called when an AFSC row inside the popup is clicked. */
+    function selectAfscFromPopup(afscCode) {
+      currentAFSC = afscCode; currentAC = "";
+      isUpdating = true;
+      document.getElementById("afsc-select").value     = afscCode;
+      document.getElementById("aircraft-select").value = "";
+      isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      /* Highlight the clicked row and un-highlight all others */
+      document.querySelectorAll(".popup-afsc-row").forEach(row => {
+        row.classList.toggle("selected", row.querySelector(".popup-afsc-code").textContent === afscCode);
+      });
+    }
+
+    /** Called when an aircraft tag inside the popup is clicked. */
+    function selectAircraftFromPopup(ac) {
+      currentAC = ac; currentAFSC = "";
+      isUpdating = true;
+      document.getElementById("aircraft-select").value = ac;
+      document.getElementById("afsc-select").value     = "";
+      isUpdating = false;
+      populateAllDropdowns(currentBase, currentAFSC, currentAC);
+      updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
+      document.querySelectorAll(".popup-aircraft-tag").forEach(tag => {
+        tag.classList.toggle("selected", tag.textContent === ac);
+      });
+    }
+
+
+    /* ============================================================
+       12. MAP PANEL RESIZER
+       ============================================================
+       The drag handle between the map and content panels.
+       Uses the Pointer Capture API: setPointerCapture() routes all
+       pointer events through the handle for the entire drag, even
+       when the cursor slides over the ArcGIS canvas (which would
+       otherwise steal the events).
+       TO CUSTOMIZE: adjust MAP_MIN_W and MAP_MAX_W.
+       ============================================================ */
+
+    (function initResizer() {
+      const handle    = document.getElementById("drag-handle");
+      if (!handle) { setTimeout(initResizer, 100); return; }  /* wait for DOM */
+
+      const mapPanel   = document.querySelector(".map-panel");
+      const leftPanel  = document.querySelector(".left-panel");
+      const rightPanel = document.querySelector(".right-panel");
+      const MAP_MIN_W  = 200;   /* TO CUSTOMIZE: minimum map width in pixels  */
+      const MAP_MAX_W  = 1400;  /* TO CUSTOMIZE: maximum map width in pixels  */
+      let startX = 0, startW = 0, dragging = false;
+
+      handle.addEventListener("pointerdown", function(e) {
+        handle.setPointerCapture(e.pointerId);
+        dragging = true; startX = e.clientX; startW = mapPanel.offsetWidth;
+        handle.classList.add("dragging");
+        /* Disable text selection while dragging */
+        leftPanel.style.userSelect = rightPanel.style.userSelect = "none";
+        document.body.style.cursor = "col-resize";
+        e.preventDefault();
+      });
+
+      handle.addEventListener("pointermove", function(e) {
+        if (!dragging) return;
+        const newW = Math.min(MAP_MAX_W, Math.max(MAP_MIN_W, startW + (e.clientX - startX)));
+        mapPanel.style.width = newW + "px";
+        if (mapView) mapView.resize(); /* tell ArcGIS to reflow the canvas */
+      });
+
+      handle.addEventListener("pointerup", function(e) {
+        if (!dragging) return;
+        dragging = false; handle.classList.remove("dragging");
+        leftPanel.style.userSelect = rightPanel.style.userSelect = "";
+        document.body.style.cursor = "";
+        handle.releasePointerCapture(e.pointerId);
+        if (mapView) mapView.resize();
+      });
+
+      handle.addEventListener("pointercancel", function() {
+        dragging = false; handle.classList.remove("dragging");
+        leftPanel.style.userSelect = rightPanel.style.userSelect = "";
+        document.body.style.cursor = "";
+      });
+    })();
+
+
+    /* ============================================================
+       13. GUIDED TOUR
+       ============================================================
+       Walks the user through the page on first load.
+       The ? button in the header reopens it at any time.
+
+       Each step object has:
+         icon     — emoji shown at the top of the card
+         title    — heading text
+         body     — HTML description (can include <strong> tags)
+         target   — id of the element to spotlight, or null for centered
+         position — where to place the card relative to the element:
+                    "right", "left", "above", "below", "center-element"
+                    Use "center" (with target: null) for full-screen center.
+
+       TO CUSTOMIZE: edit the tourSteps array below.
+       ============================================================ */
+
+    const tourSteps = [
+      {
+        icon: "=\u272a=", title: "Welcome to the USAF AFSC Navigator",
+        body: "Explore <strong>AFSCs</strong>, <strong>airframes</strong>, and installations &mdash; Active Duty, Air National Guard, and Reserve.<br><br>Use the selectors on the left or click any map pin to get started.",
+        target: null, position: "center"
+      },
+      {
+        icon: "\uD83C\uDFE0", title: "Select a Base",
+        body: "Use <strong>Select Base</strong> to choose an installation. The map flies there, loads the base website, and the other dropdowns narrow to show only what is assigned there.",
+        target: "base-select", position: "right"
+      },
+      {
+        icon: "\uD83E\uDEA6", title: "Select an AFSC",
+        body: "Use <strong>Select AFSC</strong> to filter by specialty code. All bases with that AFSC highlight on the map.",
+        target: "afsc-select", position: "right"
+      },
+      {
+        icon: "\u2708\uFE0F", title: "Select an Aircraft",
+        body: "Use <strong>Select Aircraft</strong> to filter by airframe. Every base flying that aircraft highlights on the map. Click a pin to see its full AFSC list.",
+        target: "aircraft-select", position: "right"
+      },
+      {
+        icon: "\u2611\uFE0F", title: "Filter by Base Type",
+        body: "Use the <strong>checkboxes</strong> to show or hide Active Duty, ANG, Reserve, ROTC, and Detachment bases.<br><br>The <strong>First Duty Stations Only</strong> checkbox (checked by default) filters to bases from the original dataset. Uncheck it to see all locations from the expanded dataset.<br><br>Your choices <strong>persist</strong> when you change other filters.",
+        target: "base-type-filter", position: "right"
+      },
+      {
+        icon: "\uD83D\uDCCD", title: "Use the Map Pins",
+        body: "<strong>Click any pin</strong> to open a popup showing the base type, aircraft at that base (clickable!), and all assigned AFSCs.",
+        target: "map-view", position: "center-element"
+      },
+      {
+        icon: "\uD83D\uDD00", title: "Switch Between Views",
+        body: "When both a Base and AFSC are selected, a toggle bar appears at the top of the content panel. Switch between the <strong>AFSC Page</strong> and the <strong>Base Page</strong> without losing your selection.",
+        target: "right-panel", position: "left"
+      },
+      {
+        icon: "\uD83D\uDDFA", title: "Pin Colors",
+        body: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(185,28,28);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Red</strong> &mdash; Active Duty</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(124,58,237);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Purple</strong> &mdash; Air National Guard</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(6,120,90);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Teal</strong> &mdash; Reserve</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(255,255,255);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">White</strong> &mdash; Currently selected base</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(250,204,21);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Yellow</strong> &mdash; Selected base + filter active</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(217,119,6);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Amber</strong> &mdash; ROTC</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(8,145,178);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Cyan</strong> &mdash; Detachment</span></div>
+</div>`,
+        target: "map-view", position: "center-element"
+      },
+      {
+        icon: "\uD83C\uDF9B", title: "Map Controls",
+        body: "Two buttons in the <strong>bottom-left corner of the map</strong>:<br><br><strong>&#9679; Pin Legend</strong> &mdash; toggles a color reference guide.<br><br><strong>&#128506; Dark Map / Satellite</strong> &mdash; switches between basemaps.",
+        target: "map-controls", position: "above"
+      }
+    ];
+
+    let tourStep = 0, tourActive = false;
+
+    function startTour() {
+      tourStep = 0; tourActive = true;
+      const overlay = document.getElementById("tour-overlay");
+      overlay.classList.remove("hidden"); overlay.classList.add("visible");
+      renderTourStep(0, false);
+    }
+
+    function closeTour() {
+      tourActive = false;
+      document.getElementById("tour-overlay").classList.remove("visible");
+      document.getElementById("tour-overlay").classList.add("hidden");
+      document.getElementById("tour-spotlight").classList.remove("visible");
+    }
+
+    function tourNext() { if (tourStep < tourSteps.length - 1) { tourStep++; renderTourStep(tourStep, true); } else closeTour(); }
+    function tourBack() { if (tourStep > 0) { tourStep--; renderTourStep(tourStep, false); } }
+
+    function renderTourStep(index, animate) {
+      const step  = tourSteps[index];
+      const card  = document.getElementById("tour-card");
+      const total = tourSteps.length;
+      if (animate) {
+        card.classList.add("animating");
+        setTimeout(() => { fillTourCard(step, index, total); positionCard(step); card.classList.remove("animating"); }, 200);
+      } else {
+        fillTourCard(step, index, total); positionCard(step);
+      }
+      updateSpotlight(step.target);
+    }
+
+    function fillTourCard(step, index, total) {
+      document.getElementById("tour-icon").textContent  = step.icon;
+      document.getElementById("tour-title").textContent = step.title;
+      document.getElementById("tour-body").innerHTML    = step.body;
+      document.getElementById("tour-step-indicator").textContent =
+        index === 0 ? "Getting Started" : `Step ${index} of ${total - 1}`;
+
+      document.getElementById("tour-back-btn").style.display = index === 0 ? "none" : "inline-block";
+
+      const nextBtn = document.getElementById("tour-next-btn");
+      nextBtn.textContent = index === 0 ? "Get Started \u2192" : index === total - 1 ? "Done \u2713" : "Next \u2192";
+
+      const skipBtn = document.querySelector(".tour-skip");
+      if (skipBtn) skipBtn.style.display = index === total - 1 ? "none" : "inline";
+
+      /* Rebuild progress dots */
+      const progress = document.getElementById("tour-progress");
+      progress.innerHTML = "";
+      for (let i = 0; i < total; i++) {
+        const dot = document.createElement("div");
+        dot.className = "tour-dot" + (i === index ? " active" : i < index ? " done" : "");
+        dot.onclick   = (function(idx) { return function() { tourStep = idx; renderTourStep(idx, true); }; })(i);
+        progress.appendChild(dot);
+      }
+    }
+
+    function positionCard(step) {
+      const card   = document.getElementById("tour-card");
+      const CARD_W = 380, CARD_H = card.offsetHeight || 320, PAD = 20;
+
+      if (!step.target || step.position === "center") {
+        card.style.left = Math.max(PAD, (window.innerWidth  - CARD_W) / 2) + "px";
+        card.style.top  = Math.max(PAD, (window.innerHeight - CARD_H) / 2) + "px";
+        return;
+      }
+
+      const el = document.getElementById(step.target);
+      if (!el) { card.style.left = ((window.innerWidth - CARD_W) / 2) + "px"; card.style.top = ((window.innerHeight - CARD_H) / 2) + "px"; return; }
+
+      const rect = el.getBoundingClientRect();
+      let left, top;
+      if      (step.position === "right")          { left = rect.right  + PAD;                       top = rect.top; }
+      else if (step.position === "left")           { left = rect.left   - CARD_W - PAD;              top = rect.top; }
+      else if (step.position === "above")          { left = rect.left;                               top = rect.top - CARD_H - PAD; }
+      else if (step.position === "below")          { left = rect.left;                               top = rect.bottom + PAD; }
+      else if (step.position === "center-element") { left = rect.left + (rect.width  - CARD_W) / 2; top = rect.top + (rect.height - CARD_H) / 2; }
+      else                                         { left = (window.innerWidth - CARD_W) / 2;        top = (window.innerHeight - CARD_H) / 2; }
+
+      card.style.left = Math.max(PAD, Math.min(left, window.innerWidth  - CARD_W - PAD)) + "px";
+      card.style.top  = Math.max(PAD, Math.min(top,  window.innerHeight - CARD_H - PAD)) + "px";
+    }
+
+    function updateSpotlight(targetId) {
+      const s = document.getElementById("tour-spotlight");
+      if (!targetId) { s.classList.remove("visible"); return; }
+      const el = document.getElementById(targetId);
+      if (!el)  { s.classList.remove("visible"); return; }
+      const r = el.getBoundingClientRect(), P = 6;
+      s.style.left   = (r.left   - P)     + "px";
+      s.style.top    = (r.top    - P)     + "px";
+      s.style.width  = (r.width  + P * 2) + "px";
+      s.style.height = (r.height + P * 2) + "px";
+      s.classList.add("visible");
+    }
+
+    /* Auto-start the tour 800ms after load. Remove this line to disable. */
+    setTimeout(startTour, 800);
+
+
+    /* ============================================================
+       14. MAP CONTROLS
+       ============================================================ */
+
+    /* Pin legend toggle */
+    let legendVisible = false;
+    function toggleLegend() {
+      legendVisible = !legendVisible;
+      document.getElementById("map-legend").classList.toggle("visible", legendVisible);
+      document.getElementById("legend-btn").classList.toggle("active",  legendVisible);
+    }
+
+    /* Basemap toggle — switches between dark streets and satellite imagery */
+    let currentBasemapId = BASEMAP_DARK, basemapSwitching = false;
+    function toggleBasemap() {
+      if (basemapSwitching) return;  /* ignore rapid double-clicks */
+      basemapSwitching = true;
+      const btn    = document.getElementById("basemap-btn");
+      btn.disabled = true;
+      const target = currentBasemapId === BASEMAP_DARK ? BASEMAP_SATELLITE : BASEMAP_DARK;
+      if (mapView && mapView.map) {
+        mapView.map.basemap = target;
+        currentBasemapId    = target;
+        btn.textContent     = target === BASEMAP_SATELLITE ? "\uD83D\uDDFA Satellite" : "\uD83D\uDDFA Dark Map";
+        btn.classList.toggle("active", target === BASEMAP_SATELLITE);
+        /* 1.5s cooldown prevents rapid switching from freezing the browser */
+        setTimeout(() => { basemapSwitching = false; btn.disabled = false; }, 1500);
+      } else {
+        basemapSwitching = false; btn.disabled = false;
+      }
+    }
+
+
+    /* ============================================================
+       15. DRAGGABLE POPUP
+       ============================================================
+       The popup can be dragged anywhere within the map panel.
+       Uses mouse and touch events for desktop and mobile support.
+       The drag zone is the base-name text (not the whole header)
+       so the close button never gets accidentally dragged away.
+       ============================================================ */
+
+    (function initDraggablePopup() {
+      const popup    = document.getElementById("map-popup");
+      const dragZone = document.getElementById("popup-base-name");
+      const header   = document.getElementById("popup-header");
+      let dragging = false, offX = 0, offY = 0;
+
+      function getMapRect() { return document.querySelector(".map-panel").getBoundingClientRect(); }
+
+      dragZone.addEventListener("mousedown", function(e) {
+        dragging = true;
+        const r = popup.getBoundingClientRect();
+        offX = e.clientX - r.left; offY = e.clientY - r.top;
+        header.classList.add("grabbing");
+      });
+      dragZone.addEventListener("touchstart", function(e) {
+        dragging = true;
+        const r = popup.getBoundingClientRect();
+        offX = e.touches[0].clientX - r.left; offY = e.touches[0].clientY - r.top;
+        header.classList.add("grabbing");
+      }, { passive: true });
+
+      document.addEventListener("mousemove", function(e) {
+        if (!dragging) return;
+        const m = getMapRect();
+        popup.style.left = Math.max(0, Math.min(e.clientX - offX - m.left, m.width  - popup.offsetWidth))  + "px";
+        popup.style.top  = Math.max(0, Math.min(e.clientY - offY - m.top,  m.height - popup.offsetHeight)) + "px";
+      });
+      document.addEventListener("touchmove", function(e) {
+        if (!dragging) return;
+        const m = getMapRect();
+        popup.style.left = Math.max(0, Math.min(e.touches[0].clientX - offX - m.left, m.width  - popup.offsetWidth))  + "px";
+        popup.style.top  = Math.max(0, Math.min(e.touches[0].clientY - offY - m.top,  m.height - popup.offsetHeight)) + "px";
+      }, { passive: true });
+
+      function endDrag() { dragging = false; header.classList.remove("grabbing"); }
+      document.addEventListener("mouseup",  endDrag);
+      document.addEventListener("touchend", endDrag);
+      window.addEventListener("mouseup",    endDrag);
+    })();
+
+  </script>
+
+  <!-- Spotlight ring element (positioned by updateSpotlight() during the tour) -->
+  <div id="tour-spotlight"></div>
+
+  <!-- Tour overlay — card content is injected by fillTourCard() -->
+  <div id="tour-overlay" class="hidden">
+    <div id="tour-backdrop"></div>
+    <div id="tour-card">
+      <div class="tour-card-bar"></div>
+      <div class="tour-card-body">
+        <div class="tour-step-indicator" id="tour-step-indicator"></div>
+        <span class="tour-icon"  id="tour-icon"></span>
+        <div class="tour-title"  id="tour-title"></div>
+        <div class="tour-body"   id="tour-body"></div>
+      </div>
+      <div class="tour-progress" id="tour-progress"></div>
+      <div class="tour-buttons">
+        <button class="tour-skip"          onclick="closeTour()">Skip tour</button>
+        <button class="tour-btn"           id="tour-back-btn" onclick="tourBack()">&#8592; Back</button>
+        <button class="tour-btn primary"   id="tour-next-btn" onclick="tourNext()">Next &#8594;</button>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
