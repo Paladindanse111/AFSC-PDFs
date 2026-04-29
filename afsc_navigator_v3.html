@@ -77,7 +77,7 @@
 
       /* Layout widths */
       --left-w:        260px;
-      --map-w:         700px;  /* TO CUSTOMIZE: change the default map panel width */
+      --map-w:         900px;  /* TO CUSTOMIZE: change the default map panel width */
     }
 
     /* ── RESET ─────────────────────────────────────────────── */
@@ -154,8 +154,11 @@
       height: 100%;
       user-select: none;
       -webkit-user-select: none;
-      cursor: grab;
+      cursor: grab !important;
     }
+    /* Prevent ArcGIS from resetting cursor during map operations */
+    .esri-view-surface { cursor: inherit !important; }
+    .esri-view-surface canvas { display: block !important; }
 
     /*
     Floating label in the top-right corner of the map.
@@ -1408,10 +1411,18 @@
       const baseMap = new Map();
       allData.forEach(row => { if (!baseMap.has(row.Base)) baseMap.set(row.Base, row); });
 
-      /* Which bases match the AFSC filter? (null = no filter) */
-      const matchingByAFSC = currentAFSC
-        ? new Set(allData.filter(r => r.AFSC_Code === currentAFSC).map(r => r.Base))
-        : null;
+      /* Which bases match the AFSC filter? (null = no filter)
+         currentAFSC is "CODE|SERVICE" or "" */
+      let matchingByAFSC = null;
+      if (currentAFSC) {
+        const [mCode, mSvc] = currentAFSC.split("|");
+        matchingByAFSC = new Set(
+          allData.filter(r => r.AFSC_Code === mCode &&
+                              (r.Service || "USAF") === (mSvc || "USAF") &&
+                              isBaseVisible(r))
+                 .map(r => r.Base)
+        );
+      }
 
       /* Which bases match the Aircraft filter? (null = no filter) */
       const matchingByAC = currentAC
@@ -1519,7 +1530,13 @@
       /* ── Base dropdown ── */
       const baseSelect = document.getElementById("base-select");
       let basesToShow  = [...new Set(visible.map(r => r.Base))].sort();
-      if (filterAFSC) basesToShow = basesToShow.filter(b => visible.some(r => r.Base === b && r.AFSC_Code  === filterAFSC));
+      if (filterAFSC) {
+        const [bfCode, bfSvc] = filterAFSC.split("|");
+        basesToShow = basesToShow.filter(b => visible.some(r =>
+          r.Base === b && r.AFSC_Code === bfCode &&
+          (r.Service || "USAF") === (bfSvc || "USAF")
+        ));
+      }
       if (filterAC)   basesToShow = basesToShow.filter(b => visible.some(r => r.Base === b && r.Aircraft   === filterAC));
       baseSelect.innerHTML = `<option value="">&#8212; All Bases &#8212;</option>`;
       basesToShow.forEach(base => {
@@ -1529,28 +1546,66 @@
         baseSelect.appendChild(opt);
       });
 
-      /* ── AFSC dropdown ── */
+      /* ── AFSC dropdown — split into USAF AFSCs then USSF SFSCs ── */
       const afscSelect = document.getElementById("afsc-select");
       let afscData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
-      if (filterAC)  afscData = afscData.filter(r => r.Aircraft === filterAC);
-      const afscMap = new Map();
+      if (filterAC) afscData = afscData.filter(r => r.Aircraft === filterAC);
+
+      /* Separate USAF and USSF rows */
+      const usafMap = new Map();
+      const ussfMap = new Map();
       afscData.forEach(r => {
-        /* NONE is a placeholder used for ANG/Reserve bases with no AFSCs */
-        if (r.AFSC_Code && r.AFSC_Code !== "NONE" && !afscMap.has(r.AFSC_Code))
-          afscMap.set(r.AFSC_Code, r.AFSC_Full_Name);
+        if (!r.AFSC_Code || r.AFSC_Code === "NONE") return;
+        const svc = (r.Service || "USAF").trim();
+        const key = r.AFSC_Code + "|" + svc; /* unique key per code+service */
+        if (svc === "USSF") {
+          if (!ussfMap.has(key)) ussfMap.set(key, { code: r.AFSC_Code, name: r.AFSC_Full_Name });
+        } else {
+          if (!usafMap.has(key)) usafMap.set(key, { code: r.AFSC_Code, name: r.AFSC_Full_Name });
+        }
       });
-      afscSelect.innerHTML = `<option value="">&#8212; All AFSCs &#8212;</option>`;
-      [...afscMap.entries()].sort((a, b) => a[0].localeCompare(b[0])).forEach(([code, name]) => {
+
+      /* Sort each group alphabetically by code */
+      const usafSorted = [...usafMap.values()].sort((a, b) => a.code.localeCompare(b.code));
+      const ussfSorted = [...ussfMap.values()].sort((a, b) => a.code.localeCompare(b.code));
+
+      afscSelect.innerHTML = "";
+
+      /* Default option */
+      const defaultOpt = document.createElement("option");
+      defaultOpt.value = ""; defaultOpt.textContent = "— All AFSCs —";
+      afscSelect.appendChild(defaultOpt);
+
+      /* USAF AFSC options */
+      usafSorted.forEach(({ code, name }) => {
         const opt = document.createElement("option");
-        opt.value = code; opt.textContent = name;
-        if (code === filterAFSC) opt.selected = true;
+        opt.value = code + "|USAF"; opt.textContent = name;
+        if (filterAFSC === code + "|USAF") opt.selected = true;
         afscSelect.appendChild(opt);
       });
+
+      /* SFSC divider + USSF options (only if there are any) */
+      if (ussfSorted.length > 0) {
+        const divider = document.createElement("option");
+        divider.disabled = true;
+        divider.textContent = "— SFSCs —";
+        afscSelect.appendChild(divider);
+
+        ussfSorted.forEach(({ code, name }) => {
+          const opt = document.createElement("option");
+          opt.value = code + "|USSF"; opt.textContent = name;
+          if (filterAFSC === code + "|USSF") opt.selected = true;
+          afscSelect.appendChild(opt);
+        });
+      }
 
       /* ── Aircraft dropdown ── */
       const acSelect = document.getElementById("aircraft-select");
       let acData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
-      if (filterAFSC) acData = acData.filter(r => r.AFSC_Code === filterAFSC);
+      if (filterAFSC) {
+        const [fCode2, fSvc2] = filterAFSC.split("|");
+        acData = acData.filter(r => r.AFSC_Code === fCode2 && (r.Service || "USAF") === (fSvc2 || "USAF"));
+      }
       const acSet = new Set(acData.map(r => r.Aircraft).filter(Boolean));
       acSelect.innerHTML = `<option value="">&#8212; All Aircraft &#8212;</option>`;
       [...acSet].sort().forEach(ac => {
@@ -1578,10 +1633,18 @@
 
     document.getElementById("afsc-select").addEventListener("change", function() {
       if (isUpdating) return;
-      currentAFSC = this.value; currentBase = ""; currentAC = "";
+      /*
+      AFSC select values are now "CODE|SERVICE" (e.g. "14N|USAF" or "14N|USSF")
+      for codes that exist in both services, or just "CODE|USAF" for USAF-only codes.
+      currentAFSC stores the full compound value for filtering.
+      */
+      currentAFSC = this.value;
+      currentBase = "";
+      const codeOnly = currentAFSC.split("|")[0];
+      if (codeOnly !== "PILOT") currentAC = "";
       isUpdating = true;
-      document.getElementById("base-select").value     = "";
-      document.getElementById("aircraft-select").value = "";
+      document.getElementById("base-select").value = "";
+      if (codeOnly !== "PILOT") document.getElementById("aircraft-select").value = "";
       isUpdating = false;
       populateAllDropdowns(currentBase, currentAFSC, currentAC);
       updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
@@ -1590,11 +1653,23 @@
 
     document.getElementById("aircraft-select").addEventListener("change", function() {
       if (isUpdating) return;
-      currentAC = this.value; currentBase = ""; currentAFSC = "";
-      isUpdating = true;
-      document.getElementById("base-select").value  = "";
-      document.getElementById("afsc-select").value  = "";
-      isUpdating = false;
+      const prevAFSC = currentAFSC;
+      currentAC = this.value;
+      /* If PILOT AFSC is already selected, keep it and just change aircraft */
+      if (prevAFSC === "PILOT") {
+        /* Keep currentBase and currentAFSC, just update aircraft */
+        isUpdating = true;
+        document.getElementById("base-select").value = currentBase || "";
+        isUpdating = false;
+        /* Auto-switch to airframe view when aircraft is picked under PILOT */
+        if (currentAC) currentView = "airframe";
+      } else {
+        currentBase = ""; currentAFSC = "";
+        isUpdating = true;
+        document.getElementById("base-select").value = "";
+        document.getElementById("afsc-select").value = "";
+        isUpdating = false;
+      }
       populateAllDropdowns(currentBase, currentAFSC, currentAC);
       updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
       if (!currentBase) resetMapView();
@@ -1709,11 +1784,19 @@
 
       /*
       Determine which aircraft to show a photo for:
-        - If an aircraft is directly selected, use that.
-        - If a base+AFSC are selected, find the aircraft at that base
-          (first one alphabetically) so the Airframe tab is always usable.
+        - If an aircraft is directly selected (currentAC), use that.
+        - If PILOT AFSC is selected with an aircraft filter, use currentAC.
+        - If a base is selected, find aircraft at that base.
+      The Airframe tab is shown whenever we have a photo to display.
       */
       let photoAC = currentAC;
+
+      /* If PILOT AFSC selected and aircraft chosen, that's our photo target */
+      if (!photoAC && currentAFSC.split("|")[0] === "PILOT" && currentAC) {
+        photoAC = currentAC;
+      }
+
+      /* Fall back: if a base is selected, use the first aircraft there */
       if (!photoAC && currentBase) {
         const baseAC = [...new Set(
           allData.filter(r => r.Base === currentBase && r.Aircraft).map(r => r.Aircraft)
@@ -1721,7 +1804,7 @@
         if (baseAC.length > 0) photoAC = baseAC[0];
       }
 
-      /* Show/hide the Airframe button — only when there's a photo to show */
+      /* Show Airframe tab whenever a photo is available */
       btnAirframe.style.display = photoAC ? "inline-block" : "none";
 
       /* If airframe view is active but there's no photo, fall back to afsc */
@@ -1742,7 +1825,9 @@
 
       if (currentBase && currentAFSC) {
         /* Both selected — load AFSC or Base page, show the full toggle bar */
-        const match = allData.find(r => r.Base === currentBase && r.AFSC_Code === currentAFSC);
+        const [baCode, baSvc] = currentAFSC.split("|");
+        const match = allData.find(r => r.Base === currentBase &&
+          r.AFSC_Code === baCode && (r.Service || "USAF") === (baSvc || "USAF"));
         if (match) url = currentView === "base" ? match.Base_URL : match.PDF_URL;
         toggleBar.classList.add("visible");
 
@@ -1752,7 +1837,9 @@
         toggleBar.classList.add("visible"); currentView = "afsc";
 
       } else if (currentAFSC) {
-        const match = allData.find(r => r.AFSC_Code === currentAFSC);
+        const [iCode, iSvc] = currentAFSC.split("|");
+        const match = allData.find(r =>
+          r.AFSC_Code === iCode && (r.Service || "USAF") === (iSvc || "USAF"));
         url = match ? match.PDF_URL : "";
         toggleBar.classList.add("visible"); currentView = "afsc";
 
@@ -1811,11 +1898,12 @@
         return;
       }
 
+      const [stCode, stSvc] = currentAFSC ? currentAFSC.split("|") : ["", ""];
       const matches = allData.filter(r =>
         isBaseVisible(r) &&
-        (!currentBase || r.Base      === currentBase) &&
-        (!currentAFSC  || r.AFSC_Code === currentAFSC) &&
-        (!currentAC    || r.Aircraft  === currentAC)
+        (!currentBase || r.Base === currentBase) &&
+        (!currentAFSC || (r.AFSC_Code === stCode && (r.Service || "USAF") === (stSvc || "USAF"))) &&
+        (!currentAC   || r.Aircraft === currentAC)
       );
       const uniqueBases = new Set(matches.map(r => r.Base));
       countEl.textContent = uniqueBases.size;
@@ -1823,7 +1911,7 @@
       if      (currentBase && currentAFSC) labelEl.textContent = `result for ${currentBase} / ${currentAFSC}`;
       else if (currentBase && currentAC)   labelEl.textContent = `result for ${currentBase} / ${currentAC}`;
       else if (currentBase)                labelEl.textContent = `AFSCs at ${currentBase}`;
-      else if (currentAFSC)                labelEl.textContent = `base${uniqueBases.size !== 1 ? "s" : ""} with ${currentAFSC}`;
+      else if (currentAFSC)                labelEl.textContent = `base${uniqueBases.size !== 1 ? "s" : ""} with ${currentAFSC.split("|")[0]}`;
       else if (currentAC)                  labelEl.textContent = `base${uniqueBases.size !== 1 ? "s" : ""} flying ${currentAC}`;
     }
 
@@ -1845,8 +1933,10 @@
 
       if (currentAFSC) {
         ad.style.display = "block";
-        const match = allData.find(r => r.AFSC_Code === currentAFSC);
-        ad.textContent = match ? match.AFSC_Full_Name : currentAFSC;
+        const [sdCode, sdSvc] = currentAFSC.split("|");
+        const sdMatch = allData.find(r =>
+          r.AFSC_Code === sdCode && (r.Service || "USAF") === (sdSvc || "USAF"));
+        ad.textContent = sdMatch ? sdMatch.AFSC_Full_Name : sdCode;
       } else { ad.style.display = "none"; }
 
       if (currentAC) { cd.style.display = "block"; cd.textContent = currentAC; }
@@ -1948,9 +2038,11 @@
 
     /** Called when an AFSC row inside the popup is clicked. */
     function selectAfscFromPopup(afscCode) {
-      currentAFSC = afscCode; currentAC = "";
+      /* afscCode from popup is raw code — default to USAF service */
+      currentAFSC = afscCode + "|USAF";
+      currentAC = "";
       isUpdating = true;
-      document.getElementById("afsc-select").value     = afscCode;
+      document.getElementById("afsc-select").value     = afscCode + "|USAF";
       document.getElementById("aircraft-select").value = "";
       isUpdating = false;
       populateAllDropdowns(currentBase, currentAFSC, currentAC);
@@ -2230,6 +2322,7 @@
         currentBasemapId    = target;
         btn.textContent     = target === BASEMAP_SATELLITE ? "\uD83D\uDDFA Satellite" : "\uD83D\uDDFA Dark Map";
         btn.classList.toggle("active", target === BASEMAP_SATELLITE);
+        document.getElementById("map-view").style.cursor = "grab";
         /* 1.5s cooldown prevents rapid switching from freezing the browser */
         setTimeout(() => { basemapSwitching = false; btn.disabled = false; }, 1500);
       } else {
