@@ -156,9 +156,9 @@
       -webkit-user-select: none;
       cursor: grab !important;
     }
-    /* Prevent ArcGIS from resetting cursor during map operations */
+    /* Keep ArcGIS canvas always visible — prevents black-out on basemap switch */
+    .esri-view-surface canvas { display: block !important; opacity: 1 !important; }
     .esri-view-surface { cursor: inherit !important; }
-    .esri-view-surface canvas { display: block !important; }
 
     /*
     Floating label in the top-right corner of the map.
@@ -571,85 +571,55 @@
     .help-btn:hover { border-color: var(--accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
 
     /* ── SCROLLBAR STYLING ──────────────────────────────────── */
-    /* Tips slide-out panel (mirrors abbreviation panel) */
+
+    /* Tips slide-out panel */
     #tips-panel {
-      overflow: hidden;
-      max-height: 0;
+      overflow: hidden; max-height: 0;
       transition: max-height 0.35s ease, padding 0.35s ease;
       padding: 0 8px;
     }
-    #tips-panel.open {
-      max-height: 500px;
-      padding: 8px;
-      overflow-y: auto;
-    }
+    #tips-panel.open { max-height: 600px; padding: 8px; overflow-y: auto; }
     .tips-toggle {
       font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
       text-transform: uppercase; color: var(--text-muted);
       display: flex; align-items: center; gap: 7px;
-      cursor: pointer; padding: 4px 0;
-      user-select: none; transition: color var(--transition);
+      cursor: pointer; padding: 4px 0; user-select: none;
+      transition: color var(--transition);
     }
-    .tips-toggle::before {
-      content: ''; display: block; width: 3px; height: 11px;
-      background: var(--accent); border-radius: 2px;
-    }
+    .tips-toggle::before { content:''; display:block; width:3px; height:11px; background:var(--accent); border-radius:2px; }
     .tips-toggle:hover { color: var(--text-accent); }
-    .tips-arrow { margin-left: auto; font-size: 10px; transition: transform 0.3s; }
-    .tips-arrow.open { transform: rotate(180deg); }
-    .tips-row {
-      display: flex; flex-direction: column; gap: 3px;
-      padding: 6px 0; border-bottom: 1px solid var(--border);
-      font-size: 11px; line-height: 1.5;
-    }
-    .tips-row:last-child { border-bottom: none; }
-    .tips-chain {
-      display: flex; align-items: center; gap: 5px;
-      flex-wrap: wrap; font-family: var(--font-mono); font-size: 10px;
-    }
-    .tips-code {
-      background: rgba(30,95,168,0.2); border: 1px solid rgba(30,95,168,0.4);
-      color: var(--text-accent); padding: 1px 6px; border-radius: 3px;
-    }
-    .tips-arrow-icon { color: var(--text-muted); opacity: 0.5; font-size: 10px; }
-    .tips-label { color: var(--text-muted); opacity: 0.5; font-size: 9px; letter-spacing: 0.08em; text-transform: uppercase; }
-    .tips-desc { font-size: 10px; color: var(--text-muted); opacity: 0.55; padding-left: 2px; }
+    .tips-arrow { margin-left:auto; font-size:10px; transition:transform 0.3s; }
+    .tips-arrow.open { transform:rotate(180deg); }
+    .tips-row { display:flex; flex-direction:column; gap:3px; padding:6px 0; border-bottom:1px solid var(--border); font-size:11px; line-height:1.5; }
+    .tips-row:last-child { border-bottom:none; }
+    .tips-chain { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-family:var(--font-mono); font-size:10px; }
+    .tips-code { background:rgba(30,95,168,0.2); border:1px solid rgba(30,95,168,0.4); color:var(--text-accent); padding:1px 6px; border-radius:3px; }
+    .tips-arrow-icon { color:var(--text-muted); opacity:0.5; font-size:10px; }
+    .tips-label { color:var(--text-muted); opacity:0.5; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; }
+    .tips-desc { font-size:10px; color:var(--text-muted); opacity:0.55; padding-left:2px; }
 
     /* Abbreviation slide-out panel */
     #abbrev-panel {
-      overflow: hidden;
-      max-height: 0;
+      overflow: hidden; max-height: 0;
       transition: max-height 0.35s ease, padding 0.35s ease;
       padding: 0 8px;
     }
-    #abbrev-panel.open {
-      max-height: 400px;
-      padding: 8px;
-      overflow-y: auto;
-    }
+    #abbrev-panel.open { max-height: 400px; padding: 8px; overflow-y: auto; }
     .abbrev-toggle {
       font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
       text-transform: uppercase; color: var(--text-muted);
       display: flex; align-items: center; gap: 7px;
-      cursor: pointer; padding: 4px 0;
-      user-select: none; transition: color var(--transition);
+      cursor: pointer; padding: 4px 0; user-select: none;
+      transition: color var(--transition);
     }
-    .abbrev-toggle::before {
-      content: ''; display: block; width: 3px; height: 11px;
-      background: var(--accent); border-radius: 2px;
-    }
+    .abbrev-toggle::before { content:''; display:block; width:3px; height:11px; background:var(--accent); border-radius:2px; }
     .abbrev-toggle:hover { color: var(--text-accent); }
-    .abbrev-arrow { margin-left: auto; font-size: 10px; transition: transform 0.3s; }
-    .abbrev-arrow.open { transform: rotate(180deg); }
-    .abbrev-row {
-      display: flex; gap: 6px; align-items: baseline;
-      padding: 3px 0; border-bottom: 1px solid var(--border);
-      font-size: 11px; line-height: 1.4;
-    }
-    .abbrev-row:last-child { border-bottom: none; }
-    .abbrev-code { font-family: var(--font-mono); color: var(--text-accent); flex-shrink: 0; min-width: 60px; font-size: 10px; }
-    .abbrev-desc { color: var(--text-muted); opacity: 0.7; }
-
+    .abbrev-arrow { margin-left:auto; font-size:10px; transition:transform 0.3s; }
+    .abbrev-arrow.open { transform:rotate(180deg); }
+    .abbrev-row { display:flex; gap:6px; align-items:baseline; padding:3px 0; border-bottom:1px solid var(--border); font-size:11px; line-height:1.4; }
+    .abbrev-row:last-child { border-bottom:none; }
+    .abbrev-code { font-family:var(--font-mono); color:var(--text-accent); flex-shrink:0; min-width:60px; font-size:10px; }
+    .abbrev-desc { color:var(--text-muted); opacity:0.7; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
     ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -720,6 +690,12 @@
       -->
       <div class="filter-block" id="base-type-filter">
         <div class="filter-label">Filter</div>
+        <!--
+          First Duty Stations Only checkbox.
+          Checked = show only bases from the original v8 curated list (First_Duty_Station="Yes").
+          Unchecked = show ALL active duty bases from the full dataset.
+          To change the default: set "checked" or remove it below.
+        -->
         <label class="checkbox-row">
           <input type="checkbox" id="chk-fds" checked onchange="onCheckboxChange()">
           <div class="checkbox-dot" style="background: rgb(185,28,28); border: 1px solid rgba(255,255,255,0.2);"></div>
@@ -727,132 +703,6 @@
         </label>
       </div>
 
-      <!-- Tips panel: explains the 92T training pipeline -->
-      <div class="tips-block">
-        <div class="tips-toggle" onclick="toggleTips()">
-          Tips <span class="tips-arrow" id="tips-arrow">&#9660;</span>
-        </div>
-        <div id="tips-panel">
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T0</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">11X</span>
-              <span class="tips-label">PILOT</span>
-            </div>
-            <div class="tips-desc">Undergraduate Pilot Training (UPT) at Columbus, Laughlin, or Vance. Graduates receive an 11-series AFSC based on aircraft assignment.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T0E</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">11X</span>
-              <span class="tips-label">PILOT</span>
-            </div>
-            <div class="tips-desc">Euro-NATO Joint Jet Pilot Training (ENJJPT) at Sheppard AFB. Multi-national training program; graduates receive the same 11-series assignment.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T0H</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">11H</span>
-              <span class="tips-label">RESCUE PILOT</span>
-            </div>
-            <div class="tips-desc">Helicopter pilot training at Ft. Rucker. Graduates typically receive 11H (Rescue Pilot) flying HH-60 or UH-1N.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T1</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">12X</span>
-              <span class="tips-label">CSO</span>
-            </div>
-            <div class="tips-desc">Combat Systems Officer training at Pensacola NAS. Graduates receive a 12-series AFSC — 12B (Bomber), 12F (Fighter), 12R (Recon/EW), 12S (Special Ops), etc. — based on aircraft assignment.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T2</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">13B</span>
-              <span class="tips-label">AIR BATTLE MANAGER</span>
-            </div>
-            <div class="tips-desc">Air Battle Manager training at Tyndall AFB. Graduates receive 13B and are assigned to E-3 AWACS, E-8 JSTARS, or ground-based BMC2 platforms.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">92T3</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-label">Training</span>
-              <span class="tips-arrow-icon">&#8594;</span>
-              <span class="tips-code">18X</span>
-              <span class="tips-label">RPA PILOT</span>
-            </div>
-            <div class="tips-desc">Remotely Piloted Aircraft training at JBSA Randolph. Graduates receive an 18-series AFSC — 18A (MQ-9 Attack), 18R (RQ-4 Recon), 18S (Special Ops) — based on platform assignment.</div>
-          </div>
-
-          <div class="tips-row">
-            <div class="tips-chain">
-              <span class="tips-code">PILOT</span>
-              <span class="tips-label">on map</span>
-            </div>
-            <div class="tips-desc">Pins labeled PILOT show operational flying bases where 11-series pilots are assigned after completing UPT. Use the Aircraft dropdown to filter by specific airframe.</div>
-          </div>
-
-        </div>
-      </div>
-
-      <div class="panel-divider"></div>
-
-      <!-- Abbreviation reference panel -->
-      <div class="abbrev-block">
-        <div class="abbrev-toggle" onclick="toggleAbbrev()">
-          Abbreviations <span class="abbrev-arrow" id="abbrev-arrow">&#9660;</span>
-        </div>
-        <div id="abbrev-panel">
-          <div class="abbrev-row"><span class="abbrev-code">AB</span><span class="abbrev-desc">Air Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">ABS</span><span class="abbrev-desc">Air Base Squadron</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">AFB</span><span class="abbrev-desc">Air Force Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">AFS</span><span class="abbrev-desc">Air Force Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">AGS</span><span class="abbrev-desc">Air Guard Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">AIN</span><span class="abbrev-desc">Army Installation</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">ANX</span><span class="abbrev-desc">Annex</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">ARB</span><span class="abbrev-desc">Air Reserve Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">ARS</span><span class="abbrev-desc">Air Reserve Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">ATM</span><span class="abbrev-desc">Air Terminal</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">CAP</span><span class="abbrev-desc">Capital Airport</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">DEP</span><span class="abbrev-desc">Depot</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">IAP</span><span class="abbrev-desc">International Airport</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">JAP</span><span class="abbrev-desc">Joint-Use Airport</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">JB</span><span class="abbrev-desc">Joint Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">JBSA</span><span class="abbrev-desc">Joint Base San Antonio</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">JRB</span><span class="abbrev-desc">Joint Reserve Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">MTC</span><span class="abbrev-desc">Military Training Center</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">NAS</span><span class="abbrev-desc">Naval Air Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">NS</span><span class="abbrev-desc">Naval Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">NSA</span><span class="abbrev-desc">Naval Support Activity</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">NYI</span><span class="abbrev-desc">Navy Installation</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">RAF</span><span class="abbrev-desc">Royal Air Force (UK Base)</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">SFB</span><span class="abbrev-desc">Space Force Base</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">SFS</span><span class="abbrev-desc">Space Force Station</span></div>
-          <div class="abbrev-row"><span class="abbrev-code">STG</span><span class="abbrev-desc">Storage Site / Staging Area</span></div>
-        </div>
-      </div>
 
       <div class="panel-divider"></div>
 
@@ -1020,7 +870,7 @@
        ============================================================ */
 
     /** URL to the CSV on GitHub Pages — must be publicly accessible */
-    const CSV_URL = "https://paladindanse111.github.io/AFSC-PDFs/USAF_Bases_Long_Format_v10.csv";
+    const CSV_URL = "https://paladindanse111.github.io/AFSC-PDFs/USAF_Bases_Long_Format_v11.csv";
 
     /**
      * Path to the aircraft image folder on GitHub Pages.
@@ -1057,11 +907,9 @@
     const PIN_AD_FILT = [234,  88,  12, 1.0];   /* orange when filtered */
     const PIN_AD_SF   = [250, 204,  21, 1.0];   /* yellow: selected + filtered */
 
-    
 
     /** Faded color for bases that don't match the current filter */
     const PIN_FADED = [255, 69, 0, 0.15];
-
 
     /** Default pin diameter in pixels */
     const PIN_SIZE = 8;
@@ -1157,44 +1005,45 @@
      * Returns the current state of the three base-type checkboxes.
      * Used by isBaseVisible() and populateAllDropdowns().
      */
+
+    /** Toggles the Tips slide-out panel */
+    function toggleTips() {
+      document.getElementById("tips-panel").classList.toggle("open");
+      document.getElementById("tips-arrow").classList.toggle("open");
+    }
+
+    /** Toggles the Abbreviations slide-out panel */
+    function toggleAbbrev() {
+      document.getElementById("abbrev-panel").classList.toggle("open");
+      document.getElementById("abbrev-arrow").classList.toggle("open");
+    }
+
+    /*
+     * getChecked — returns current checkbox state.
+     * Only one filter in V3: First Duty Stations Only.
+     * TO CUSTOMIZE: add more checkboxes to the HTML and add them here.
+     */
     function getChecked() {
       return {
         fds: document.getElementById("chk-fds").checked,
       };
     }
 
-    /** Toggles the tips slide-out panel */
-    function toggleTips() {
-      const panel = document.getElementById("tips-panel");
-      const arrow = document.getElementById("tips-arrow");
-      panel.classList.toggle("open");
-      arrow.classList.toggle("open");
-    }
-
-    /** Toggles the abbreviation slide-out panel */
-    function toggleAbbrev() {
-      const panel = document.getElementById("abbrev-panel");
-      const arrow = document.getElementById("abbrev-arrow");
-      panel.classList.toggle("open");
-      arrow.classList.toggle("open");
-    }
-
     /**
-     * Returns true if a data row should appear given the checkbox state.
-     * V3 data is Active Duty only.
+     * isBaseVisible — controls which rows appear on the map.
      *
-     * First_Duty_Station column in the CSV:
-     *   "Yes" = base is in the original curated FDS list (v7 bases)
-     *   "No"  = base appears in the expanded dataset only
+     * V11 CSV has only Active Duty rows.
+     * First_Duty_Station column: "Yes" = in original curated list, "No" = expanded data.
      *
-     * Checkbox behavior:
-     *   Checked (default) = show ONLY First_Duty_Station === "Yes" rows
-     *   Unchecked         = show ALL rows regardless of FDS status
+     * When FDS checkbox is CHECKED  → show only "Yes" rows (default).
+     * When FDS checkbox is UNCHECKED → show ALL rows.
+     *
+     * TO CUSTOMIZE: add more conditions here if you add more checkboxes.
      */
     function isBaseVisible(row) {
-      const c   = getChecked();
+      const chk = getChecked();
       const fds = (row.First_Duty_Station || "No").trim();
-      if (c.fds && fds !== "Yes") return false;
+      if (chk.fds && fds !== "Yes") return false;
       return true;
     }
 
@@ -1411,17 +1260,19 @@
       const baseMap = new Map();
       allData.forEach(row => { if (!baseMap.has(row.Base)) baseMap.set(row.Base, row); });
 
-      /* Which bases match the AFSC filter? (null = no filter)
-         currentAFSC is "CODE|SERVICE" or "" */
+      /*
+       * matchingByAFSC — set of bases that have the selected AFSC+Service combo.
+       * null when no AFSC is selected (all bases shown).
+       */
       let matchingByAFSC = null;
       if (currentAFSC) {
         const [mCode, mSvc] = currentAFSC.split("|");
         matchingByAFSC = new Set(
-          allData.filter(r => r.AFSC_Code === mCode &&
-                              (r.Service || "USAF") === (mSvc || "USAF") &&
-                              isBaseVisible(r))
-                 .map(r => r.Base)
-        );
+          allData.filter(r =>
+            isBaseVisible(r) &&
+            r.AFSC_Code === mCode &&
+            (r.Service || "USAF") === (mSvc || "USAF"))
+          .map(r => r.Base));
       }
 
       /* Which bases match the Aircraft filter? (null = no filter) */
@@ -1446,7 +1297,10 @@
         const lon = dmsToDecimal(row.Longitude);
         if (lat === null || lon === null) return;
 
-        /* All V3 data is Active Duty — single color family */
+        /*
+         * Pin color — V11 is Active Duty only, so we always use the AD color family.
+         * TO CUSTOMIZE: add branches here if you re-introduce ANG/Reserve data.
+         */
         const defC = PIN_AD_DEF, filtC = PIN_AD_FILT, sfC = PIN_AD_SF;
 
         /* Determine state flags */
@@ -1534,8 +1388,7 @@
         const [bfCode, bfSvc] = filterAFSC.split("|");
         basesToShow = basesToShow.filter(b => visible.some(r =>
           r.Base === b && r.AFSC_Code === bfCode &&
-          (r.Service || "USAF") === (bfSvc || "USAF")
-        ));
+          (r.Service || "USAF") === (bfSvc || "USAF")));
       }
       if (filterAC)   basesToShow = basesToShow.filter(b => visible.some(r => r.Base === b && r.Aircraft   === filterAC));
       baseSelect.innerHTML = `<option value="">&#8212; All Bases &#8212;</option>`;
@@ -1546,55 +1399,52 @@
         baseSelect.appendChild(opt);
       });
 
-      /* ── AFSC dropdown — split into USAF AFSCs then USSF SFSCs ── */
+      /*
+       * AFSC dropdown — split into two groups:
+       *   1. USAF AFSCs  (Service = "USAF")
+       *   2. SFSCs       (Service = "USSF") — preceded by a disabled divider
+       *
+       * Option values are stored as "CODE|SERVICE" (e.g. "14N|USAF", "14N|USSF")
+       * so USAF and USSF versions of the same code can coexist in the selector.
+       *
+       * TO CUSTOMIZE: change the divider text by editing the textContent below.
+       */
       const afscSelect = document.getElementById("afsc-select");
       let afscData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
-      if (filterAC) afscData = afscData.filter(r => r.Aircraft === filterAC);
+      if (filterAC)  afscData = afscData.filter(r => r.Aircraft === filterAC);
 
-      /* Separate USAF and USSF rows */
-      const usafMap = new Map();
-      const ussfMap = new Map();
+      const usafMap = new Map(), ussfMap = new Map();
       afscData.forEach(r => {
         if (!r.AFSC_Code || r.AFSC_Code === "NONE") return;
         const svc = (r.Service || "USAF").trim();
-        const key = r.AFSC_Code + "|" + svc; /* unique key per code+service */
-        if (svc === "USSF") {
-          if (!ussfMap.has(key)) ussfMap.set(key, { code: r.AFSC_Code, name: r.AFSC_Full_Name });
-        } else {
-          if (!usafMap.has(key)) usafMap.set(key, { code: r.AFSC_Code, name: r.AFSC_Full_Name });
-        }
+        const key = r.AFSC_Code + "|" + svc;
+        if (svc === "USSF") { if (!ussfMap.has(key)) ussfMap.set(key, r.AFSC_Full_Name); }
+        else                { if (!usafMap.has(key)) usafMap.set(key, r.AFSC_Full_Name); }
       });
 
-      /* Sort each group alphabetically by code */
-      const usafSorted = [...usafMap.values()].sort((a, b) => a.code.localeCompare(b.code));
-      const ussfSorted = [...ussfMap.values()].sort((a, b) => a.code.localeCompare(b.code));
+      const usafSorted = [...usafMap.entries()].sort((a,b) => a[0].localeCompare(b[0]));
+      const ussfSorted = [...ussfMap.entries()].sort((a,b) => a[0].localeCompare(b[0]));
 
       afscSelect.innerHTML = "";
+      const defOpt = document.createElement("option");
+      defOpt.value = ""; defOpt.textContent = "— All AFSCs —";
+      afscSelect.appendChild(defOpt);
 
-      /* Default option */
-      const defaultOpt = document.createElement("option");
-      defaultOpt.value = ""; defaultOpt.textContent = "— All AFSCs —";
-      afscSelect.appendChild(defaultOpt);
-
-      /* USAF AFSC options */
-      usafSorted.forEach(({ code, name }) => {
+      usafSorted.forEach(([key, name]) => {
         const opt = document.createElement("option");
-        opt.value = code + "|USAF"; opt.textContent = name;
-        if (filterAFSC === code + "|USAF") opt.selected = true;
+        opt.value = key; opt.textContent = name;
+        if (key === filterAFSC) opt.selected = true;
         afscSelect.appendChild(opt);
       });
 
-      /* SFSC divider + USSF options (only if there are any) */
       if (ussfSorted.length > 0) {
-        const divider = document.createElement("option");
-        divider.disabled = true;
-        divider.textContent = "— SFSCs —";
-        afscSelect.appendChild(divider);
-
-        ussfSorted.forEach(({ code, name }) => {
+        const div = document.createElement("option");
+        div.disabled = true; div.textContent = "— SFSCs —";
+        afscSelect.appendChild(div);
+        ussfSorted.forEach(([key, name]) => {
           const opt = document.createElement("option");
-          opt.value = code + "|USSF"; opt.textContent = name;
-          if (filterAFSC === code + "|USSF") opt.selected = true;
+          opt.value = key; opt.textContent = name;
+          if (key === filterAFSC) opt.selected = true;
           afscSelect.appendChild(opt);
         });
       }
@@ -1603,8 +1453,9 @@
       const acSelect = document.getElementById("aircraft-select");
       let acData = filterBase ? visible.filter(r => r.Base === filterBase) : visible;
       if (filterAFSC) {
-        const [fCode2, fSvc2] = filterAFSC.split("|");
-        acData = acData.filter(r => r.AFSC_Code === fCode2 && (r.Service || "USAF") === (fSvc2 || "USAF"));
+        const [acCode, acSvc] = filterAFSC.split("|");
+        acData = acData.filter(r =>
+          r.AFSC_Code === acCode && (r.Service || "USAF") === (acSvc || "USAF"));
       }
       const acSet = new Set(acData.map(r => r.Aircraft).filter(Boolean));
       acSelect.innerHTML = `<option value="">&#8212; All Aircraft &#8212;</option>`;
@@ -1634,13 +1485,13 @@
     document.getElementById("afsc-select").addEventListener("change", function() {
       if (isUpdating) return;
       /*
-      AFSC select values are now "CODE|SERVICE" (e.g. "14N|USAF" or "14N|USSF")
-      for codes that exist in both services, or just "CODE|USAF" for USAF-only codes.
-      currentAFSC stores the full compound value for filtering.
-      */
+       * currentAFSC stores "CODE|SERVICE" (e.g. "14N|USAF", "14N|USSF", "PILOT|USAF").
+       * The code-only part is parsed with split("|")[0] wherever needed.
+       */
       currentAFSC = this.value;
-      currentBase = "";
       const codeOnly = currentAFSC.split("|")[0];
+      currentBase = "";
+      /* Preserve aircraft selection only when switching within PILOT */
       if (codeOnly !== "PILOT") currentAC = "";
       isUpdating = true;
       document.getElementById("base-select").value = "";
@@ -1653,22 +1504,21 @@
 
     document.getElementById("aircraft-select").addEventListener("change", function() {
       if (isUpdating) return;
-      const prevAFSC = currentAFSC;
+      const prevCodeOnly = currentAFSC.split("|")[0];
       currentAC = this.value;
-      /* If PILOT AFSC is already selected, keep it and just change aircraft */
-      if (prevAFSC === "PILOT") {
-        /* Keep currentBase and currentAFSC, just update aircraft */
-        isUpdating = true;
-        document.getElementById("base-select").value = currentBase || "";
-        isUpdating = false;
-        /* Auto-switch to airframe view when aircraft is picked under PILOT */
-        if (currentAC) currentView = "airframe";
-      } else {
+      /*
+       * If PILOT is currently selected in the AFSC dropdown, keep it selected
+       * when the aircraft changes. Otherwise clear it (aircraft-first workflow).
+       */
+      if (prevCodeOnly !== "PILOT") {
         currentBase = ""; currentAFSC = "";
         isUpdating = true;
         document.getElementById("base-select").value = "";
         document.getElementById("afsc-select").value = "";
         isUpdating = false;
+      } else {
+        /* PILOT stays selected; auto-switch right panel to Airframe tab */
+        if (currentAC) currentView = "airframe";
       }
       populateAllDropdowns(currentBase, currentAFSC, currentAC);
       updateIframe(); updateStatus(); updateClearButtons(); updateSelectionDisplays(); updateMapPins();
@@ -1784,19 +1634,11 @@
 
       /*
       Determine which aircraft to show a photo for:
-        - If an aircraft is directly selected (currentAC), use that.
-        - If PILOT AFSC is selected with an aircraft filter, use currentAC.
-        - If a base is selected, find aircraft at that base.
-      The Airframe tab is shown whenever we have a photo to display.
+        - If an aircraft is directly selected, use that.
+        - If a base+AFSC are selected, find the aircraft at that base
+          (first one alphabetically) so the Airframe tab is always usable.
       */
       let photoAC = currentAC;
-
-      /* If PILOT AFSC selected and aircraft chosen, that's our photo target */
-      if (!photoAC && currentAFSC.split("|")[0] === "PILOT" && currentAC) {
-        photoAC = currentAC;
-      }
-
-      /* Fall back: if a base is selected, use the first aircraft there */
       if (!photoAC && currentBase) {
         const baseAC = [...new Set(
           allData.filter(r => r.Base === currentBase && r.Aircraft).map(r => r.Aircraft)
@@ -1804,7 +1646,7 @@
         if (baseAC.length > 0) photoAC = baseAC[0];
       }
 
-      /* Show Airframe tab whenever a photo is available */
+      /* Show/hide the Airframe button — only when there's a photo to show */
       btnAirframe.style.display = photoAC ? "inline-block" : "none";
 
       /* If airframe view is active but there's no photo, fall back to afsc */
@@ -1826,8 +1668,9 @@
       if (currentBase && currentAFSC) {
         /* Both selected — load AFSC or Base page, show the full toggle bar */
         const [baCode, baSvc] = currentAFSC.split("|");
-        const match = allData.find(r => r.Base === currentBase &&
-          r.AFSC_Code === baCode && (r.Service || "USAF") === (baSvc || "USAF"));
+        const match = allData.find(r =>
+          r.Base === currentBase && r.AFSC_Code === baCode &&
+          (r.Service || "USAF") === (baSvc || "USAF"));
         if (match) url = currentView === "base" ? match.Base_URL : match.PDF_URL;
         toggleBar.classList.add("visible");
 
@@ -1898,11 +1741,12 @@
         return;
       }
 
-      const [stCode, stSvc] = currentAFSC ? currentAFSC.split("|") : ["", ""];
+      const [stCode, stSvc] = currentAFSC ? currentAFSC.split("|") : ["",""];
       const matches = allData.filter(r =>
         isBaseVisible(r) &&
         (!currentBase || r.Base === currentBase) &&
-        (!currentAFSC || (r.AFSC_Code === stCode && (r.Service || "USAF") === (stSvc || "USAF"))) &&
+        (!currentAFSC || (r.AFSC_Code === stCode &&
+          (r.Service || "USAF") === (stSvc || "USAF"))) &&
         (!currentAC   || r.Aircraft === currentAC)
       );
       const uniqueBases = new Set(matches.map(r => r.Base));
@@ -1974,6 +1818,16 @@
       badge.textContent = btype;
       nameEl.parentNode.insertBefore(badge, nameEl);
 
+      /* ── Army note (shown for Army installations) ── */
+      const existingNote = popup.querySelector(".popup-army-note");
+      if (existingNote) existingNote.remove();
+      if (baseRow && baseRow.Army_Note) {
+        const noteDiv = document.createElement("div");
+        noteDiv.className   = "popup-army-note";
+        noteDiv.textContent = baseRow.Army_Note;
+        nameEl.parentNode.insertBefore(noteDiv, nameEl.nextSibling);
+      }
+
       /* ── Aircraft tags ── */
       const acSection = document.getElementById("popup-aircraft-section");
       const acTagsEl  = document.getElementById("popup-aircraft-tags");
@@ -1996,19 +1850,31 @@
       const afscRows = [];
       const seen     = new Set();
       allData.filter(r => r.Base === baseName).forEach(r => {
-        if (r.AFSC_Code && r.AFSC_Code !== "NONE" && !seen.has(r.AFSC_Code)) {
-          seen.add(r.AFSC_Code);
-          afscRows.push({ code: r.AFSC_Code, name: r.AFSC_Full_Name });
+        if (!r.AFSC_Code || r.AFSC_Code === "NONE") return;
+        /*
+         * Popup groups USAF and USSF separately.
+         * Key = "CODE|SERVICE" to match currentAFSC format.
+         */
+        const svc = (r.Service || "USAF").trim();
+        const key = r.AFSC_Code + "|" + svc;
+        if (!seen.has(key)) {
+          seen.add(key);
+          afscRows.push({ code: r.AFSC_Code, name: r.AFSC_Full_Name, key });
         }
       });
-      afscRows.sort((a, b) => a.code.localeCompare(b.code));
+      afscRows.sort((a, b) => {
+        /* USAF first, then USSF */
+        const sA = a.key.split("|")[1], sB = b.key.split("|")[1];
+        if (sA !== sB) return sA === "USAF" ? -1 : 1;
+        return a.code.localeCompare(b.code);
+      });
       listEl.innerHTML = "";
       if (afscRows.length === 0) {
         listEl.innerHTML = '<div style="padding:10px 12px;font-size:11px;color:rgba(255,255,255,0.35);letter-spacing:0.05em;">No AFSCs assigned</div>';
       } else {
         afscRows.forEach(afsc => {
           const row = document.createElement("div");
-          row.className = "popup-afsc-row" + (afsc.code === currentAFSC ? " selected" : "");
+          row.className = "popup-afsc-row" + (afsc.key === currentAFSC ? " selected" : "");
           row.innerHTML = `<div class="popup-afsc-code">${afsc.code}</div>
                            <div class="popup-afsc-name">${afsc.name}</div>`;
           row.addEventListener("click", () => selectAfscFromPopup(afsc.code));
@@ -2038,9 +1904,8 @@
 
     /** Called when an AFSC row inside the popup is clicked. */
     function selectAfscFromPopup(afscCode) {
-      /* afscCode from popup is raw code — default to USAF service */
-      currentAFSC = afscCode + "|USAF";
-      currentAC = "";
+      /* Raw code from popup → default to USAF service */
+      currentAFSC = afscCode + "|USAF"; currentAC = "";
       isUpdating = true;
       document.getElementById("afsc-select").value     = afscCode + "|USAF";
       document.getElementById("aircraft-select").value = "";
@@ -2165,7 +2030,7 @@
       },
       {
         icon: "\u2611\uFE0F", title: "Filter by Base Type",
-        body: "The <strong>First Duty Stations Only</strong> checkbox (checked by default) shows only the ~100 curated bases from the official first-assignment list.<br><br><strong>Uncheck it</strong> to reveal all Active Duty locations from the full expanded dataset, including overseas detachments, NATO sites, and non-standard assignments.<br><br>This setting persists when you change other filters.",
+        body: "Use the <strong>checkboxes</strong> to show or hide Active Duty, ANG, and Reserve bases.<br><br>Your choices <strong>persist</strong> when you change other filters &mdash; they never auto-reset.",
         target: "base-type-filter", position: "right"
       },
       {
@@ -2182,10 +2047,10 @@
         icon: "\uD83D\uDDFA", title: "Pin Colors",
         body: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
   <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(185,28,28);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Red</strong> &mdash; Active Duty</span></div>
-
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(124,58,237);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Purple</strong> &mdash; Air National Guard</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(6,120,90);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Teal</strong> &mdash; Reserve</span></div>
   <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(255,255,255);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">White</strong> &mdash; Currently selected base</span></div>
   <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(250,204,21);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Yellow</strong> &mdash; Selected base + filter active</span></div>
-
 </div>`,
         target: "map-view", position: "center-element"
       },
@@ -2322,7 +2187,6 @@
         currentBasemapId    = target;
         btn.textContent     = target === BASEMAP_SATELLITE ? "\uD83D\uDDFA Satellite" : "\uD83D\uDDFA Dark Map";
         btn.classList.toggle("active", target === BASEMAP_SATELLITE);
-        document.getElementById("map-view").style.cursor = "grab";
         /* 1.5s cooldown prevents rapid switching from freezing the browser */
         setTimeout(() => { basemapSwitching = false; btn.disabled = false; }, 1500);
       } else {
