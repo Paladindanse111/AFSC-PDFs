@@ -503,7 +503,7 @@
     TO CUSTOMIZE: edit .legend-dot background colors and the label text.
     */
     #map-legend {
-      position: absolute; bottom: 90px; left: 12px;
+      position: absolute; bottom: 140px; left: 12px;
       background: rgba(10,14,26,0.92);
       border: 1px solid var(--border-accent);
       border-radius: var(--radius); padding: 12px 14px;
@@ -1988,7 +1988,7 @@
     const tourSteps = [
       {
         icon: "=\u272a=", title: "Welcome to the USAF AFSC Navigator",
-        body: "Explore <strong>AFSCs</strong>, <strong>airframes</strong>, and installations &mdash; Active Duty, Air National Guard, and Reserve.<br><br>Use the selectors on the left or click any map pin to get started.",
+        body: "Explore <strong>AFSCs</strong>, <strong>airframes</strong>, and installations &mdash; for Active Duty<br><br>Use the selectors on the left or click any map pin to get started.",
         target: null, position: "center"
       },
       {
@@ -2008,25 +2008,23 @@
       },
       {
         icon: "\u2611\uFE0F", title: "Filter by Base Type",
-        body: "Use the <strong>checkboxes</strong> to show or hide Active Duty, ANG, and Reserve bases.<br><br>Your choices <strong>persist</strong> when you change other filters &mdash; they never auto-reset.",
+        body: "Use the <strong>checkboxes</strong> to show or hide First Duty Stations.<br>",
         target: "base-type-filter", position: "right"
       },
       {
         icon: "\uD83D\uDCCD", title: "Use the Map Pins",
-        body: "<strong>Click any pin</strong> to open a popup showing the base type, aircraft at that base (clickable!), and all assigned AFSCs.",
+        body: "<strong>Click any pin</strong> to open a popup showing the base type, aircraft at that base, and all assigned AFSCs.",
         target: "map-view", position: "center-element"
       },
       {
         icon: "\uD83D\uDD00", title: "Switch Between Views",
-        body: "When both a Base and AFSC are selected, a toggle bar appears at the top of the content panel. Switch between the <strong>AFSC Page</strong> and the <strong>Base Page</strong> without losing your selection.",
+        body: "When both a Base and AFSC are selected, a toggle bar appears at the top of the content panel. Switch between the <strong>AFSC Page</strong>. <strong>Base Page</strong> or <strong>Airframe Image</strong> ",
         target: "right-panel", position: "left"
       },
       {
         icon: "\uD83D\uDDFA", title: "Pin Colors",
         body: `<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px;">
-  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(185,28,28);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Red</strong> &mdash; Active Duty</span></div>
-  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(124,58,237);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Purple</strong> &mdash; Air National Guard</span></div>
-  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(6,120,90);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Teal</strong> &mdash; Reserve</span></div>
+  <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(185,28,28);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Red</strong> &mdash; Default Base color</span></div>
   <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(255,255,255);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">White</strong> &mdash; Currently selected base</span></div>
   <div style="display:flex;align-items:center;gap:10px;"><div style="width:12px;height:12px;border-radius:50%;background:rgb(250,204,21);flex-shrink:0;"></div><span><strong style="color:#e8edf5;">Yellow</strong> &mdash; Selected base + filter active</span></div>
 </div>`,
