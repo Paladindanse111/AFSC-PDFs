@@ -919,7 +919,7 @@
        ============================================================ */
 
     /** URL to the CSV on GitHub Pages — must be publicly accessible */
-    const CSV_URL = "https://paladindanse111.github.io/AFSC-PDFs/USAF_Bases_Long_Format_v11.csv";
+    const CSV_URL = "https://paladindanse111.github.io/AFSC-PDFs/USAF_Bases_Long_Format_v12.csv";
 
     /**
      * Path to the aircraft image folder on GitHub Pages.
@@ -1066,7 +1066,7 @@
     }
 
     /**
-     * isBaseVisible — V11 is Active Duty only.
+     * isBaseVisible — V12 is Active Duty only.
      * FDS checked = show only First_Duty_Station="Yes" rows.
      * FDS unchecked = show all rows.
      */
@@ -1314,7 +1314,7 @@
         const lon = dmsToDecimal(row.Longitude);
         if (lat === null || lon === null) return;
 
-        /* V11 is Active Duty only — single color family */
+        /* V12 is Active Duty only — single color family */
         const defC = PIN_AD_DEF, filtC = PIN_AD_FILT, sfC = PIN_AD_SF;
 
         /* Determine state flags */
