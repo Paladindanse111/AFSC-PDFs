@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>USAF AFSC Navigator V3</title>
+  <title>USAF AFSC Navigator</title>
 
   <!--
   ============================================================
@@ -77,7 +77,7 @@
 
       /* Layout widths */
       --left-w:        260px;
-      --map-w:         900px;  /* TO CUSTOMIZE: change the default map panel width */
+      --map-w:         1100px;  /* TO CUSTOMIZE: change the default map panel width */
     }
 
     /* ── RESET ─────────────────────────────────────────────── */
@@ -172,7 +172,7 @@
       border: 1px solid var(--border-accent);
       border-radius: var(--radius);
       padding: 6px 12px;
-      font-size: 13px; font-weight: 600;
+      font-size: 14px; font-weight: 600;
       letter-spacing: 0.05em;
       color: var(--text-accent);
       pointer-events: none; /* label never blocks map clicks */
@@ -228,7 +228,7 @@
     #no-info-panel.visible { display: flex; }
     .no-info-icon  { font-size: 52px; opacity: 0.18; }
     .no-info-title { font-size: 15px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; }
-    .no-info-sub   { font-size: 12px; letter-spacing: 0.06em; color: var(--text-muted); opacity: 0.35; }
+    .no-info-sub   { font-size: 15px; letter-spacing: 0.06em; color: var(--text-muted); opacity: 0.35; }
 
     /*
     ── AIRFRAME PHOTO PANEL ──────────────────────────────────────
@@ -281,7 +281,7 @@
     .selector-block { display: flex; flex-direction: column; gap: 9px; }
 
     .selector-label, .filter-label {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.13em;
+      font-size: 12px; font-weight: 700; letter-spacing: 0.13em;
       text-transform: uppercase; color: var(--text-muted);
       display: flex; align-items: center; gap: 7px;
     }
@@ -325,7 +325,7 @@
     .clear-btn {
       background: transparent; border: 1px solid var(--border);
       border-radius: var(--radius); color: var(--text-muted);
-      font-family: var(--font-main); font-size: 11px;
+      font-family: var(--font-main); font-size: 12px;
       letter-spacing: 0.07em; text-transform: uppercase;
       padding: 5px 10px; cursor: pointer;
       transition: all var(--transition);
@@ -350,7 +350,7 @@
       content: ''; flex: 1; height: 1px; background: var(--border);
     }
     .or-divider span {
-      font-size: 10px; font-weight: 700; letter-spacing: 0.15em;
+      font-size: 14px; font-weight: 700; letter-spacing: 0.15em;
       text-transform: uppercase; flex-shrink: 0;
     }
 
@@ -374,7 +374,7 @@
       cursor: pointer; accent-color: var(--accent); flex-shrink: 0;
     }
     .checkbox-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
-    .checkbox-text { font-size: 12px; color: var(--text-muted); letter-spacing: 0.04em; }
+    .checkbox-text { font-size: 14px; color: var(--text-muted); letter-spacing: 0.04em; }
 
     /* Result count shown at the bottom of the left panel */
     .status-block { margin-top: auto; padding-top: 14px; border-top: 1px solid var(--border); font-size: 12px; color: var(--text-muted); letter-spacing: 0.03em; line-height: 1.6; }
@@ -433,7 +433,7 @@
 
     /* Aircraft tags row inside the popup */
     .popup-aircraft-section { padding: 6px 12px 4px; flex-shrink: 0; border-bottom: 1px solid var(--border); background: rgba(0,0,0,0.15); }
-    .popup-aircraft-label   { font-size: 9px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; margin-bottom: 4px; }
+    .popup-aircraft-label   { font-size: 11px; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.6; margin-bottom: 4px; }
     .popup-aircraft-tags    { display: flex; flex-wrap: wrap; gap: 4px; }
     /* Each aircraft tag is clickable — clicking it sets the Aircraft filter */
     .popup-aircraft-tag {
@@ -453,8 +453,8 @@
     .popup-afsc-row:last-child { border-bottom: none; }
     .popup-afsc-row:hover    { background: rgba(30,95,168,0.15); }
     .popup-afsc-row.selected { background: rgba(30,95,168,0.25); border-left: 3px solid var(--accent); padding-left: 9px; }
-    .popup-afsc-code { font-family: var(--font-mono); font-size: 12px; color: var(--text-accent); letter-spacing: 0.04em; }
-    .popup-afsc-name { font-size: 11px; color: var(--text-muted); letter-spacing: 0.02em; line-height: 1.3; }
+    .popup-afsc-code { font-family: var(--font-mono); font-size: 13px; color: var(--text-accent); letter-spacing: 0.04em; }
+    .popup-afsc-name { font-size: 12px; color: var(--text-muted); letter-spacing: 0.02em; line-height: 1.3; }
 
     /* ── DRAG HANDLE ────────────────────────────────────────── */
     /*
@@ -511,8 +511,8 @@
       display: none; flex-direction: column; gap: 8px; min-width: 240px;
     }
     #map-legend.visible { display: flex; }
-    .legend-title   { font-size: 10px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
-    .legend-section { font-size: 9px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.5; margin-top: 4px; }
+    .legend-title   { font-size: 12px; font-weight: 700; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-muted); margin-bottom: 2px; border-bottom: 1px solid var(--border); padding-bottom: 6px; }
+    .legend-section { font-size: 11px; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: var(--text-muted); opacity: 0.5; margin-top: 4px; }
     .legend-row     { display: flex; align-items: center; gap: 10px; font-size: 12px; color: var(--text-muted); line-height: 1.4; }
     .legend-dot     { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; box-shadow: 0 0 0 1px rgba(255,255,255,0.1); }
     .legend-dot.dim { width: 9px; height: 9px; margin-left: 1.5px; }
@@ -541,10 +541,10 @@
     #tour-card.animating { opacity: 0; transform: translateY(8px); }
     .tour-card-bar       { height: 4px; background: linear-gradient(90deg, var(--accent), #5ba3f5); }
     .tour-card-body      { padding: 24px 24px 16px; }
-    .tour-step-indicator { font-size: 10px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-accent); margin-bottom: 10px; font-family: var(--font-mono); }
+    .tour-step-indicator { font-size: 12px; font-weight: 700; letter-spacing: 0.14em; text-transform: uppercase; color: var(--text-accent); margin-bottom: 10px; font-family: var(--font-mono); }
     .tour-icon           { font-size: 32px; margin-bottom: 10px; display: block; line-height: 1; }
     .tour-title          { font-size: 20px; font-weight: 700; letter-spacing: 0.05em; text-transform: uppercase; color: var(--text-primary); margin-bottom: 10px; line-height: 1.2; }
-    .tour-body           { font-size: 14px; color: var(--text-muted); line-height: 1.65; letter-spacing: 0.02em; }
+    .tour-body           { font-size: 15px; color: var(--text-muted); line-height: 1.65; letter-spacing: 0.02em; }
     .tour-body strong    { color: var(--text-accent); font-weight: 600; }
 
     /* Clickable dot progress indicator at the bottom of each card */
@@ -558,7 +558,7 @@
     .tour-btn:hover  { border-color: var(--border-accent); color: var(--text-accent); background: rgba(30,95,168,0.1); }
     .tour-btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
     .tour-btn.primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); }
-    .tour-skip { font-size: 11px; color: var(--text-muted); cursor: pointer; margin-right: auto; letter-spacing: 0.05em; text-decoration: underline; text-underline-offset: 3px; opacity: 0.6; transition: opacity var(--transition); background: none; border: none; font-family: var(--font-main); padding: 0; }
+    .tour-skip { font-size: 12px; color: var(--text-muted); cursor: pointer; margin-right: auto; letter-spacing: 0.05em; text-decoration: underline; text-underline-offset: 3px; opacity: 0.6; transition: opacity var(--transition); background: none; border: none; font-family: var(--font-main); padding: 0; }
     .tour-skip:hover { opacity: 1; }
 
     /* Glowing spotlight ring that highlights the element being described */
@@ -575,7 +575,7 @@
       padding: 8px 18px;
       background: rgba(120,80,0,0.15);
       border-top: 1px solid rgba(255,180,40,0.2);
-      font-size: 11px;
+      font-size: 16px;
       color: rgba(255,200,80,0.8);
       font-style: italic;
       line-height: 1.5;
@@ -590,18 +590,18 @@
     .slide-toggle { font-size:14px; font-weight:700; letter-spacing:0.13em; text-transform:uppercase; color:var(--text-muted); display:flex; align-items:center; gap:7px; cursor:pointer; padding:4px 0; user-select:none; transition:color var(--transition); }
     .slide-toggle::before { content:''; display:block; width:3px; height:11px; background:var(--accent); border-radius:2px; }
     .slide-toggle:hover { color:var(--text-accent); }
-    .slide-arrow { margin-left:auto; font-size:10px; transition:transform 0.3s; }
+    .slide-arrow { margin-left:auto; font-size:13px; transition:transform 0.3s; }
     .slide-arrow.open { transform:rotate(180deg); }
-    .tips-row { display:flex; flex-direction:column; gap:3px; padding:6px 0; border-bottom:1px solid var(--border); font-size:11px; line-height:1.5; }
+    .tips-row { display:flex; flex-direction:column; gap:3px; padding:6px 0; border-bottom:1px solid var(--border); font-size:14px; line-height:1.5; }
     .tips-row:last-child { border-bottom:none; }
-    .tips-chain { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-family:var(--font-mono); font-size:10px; }
+    .tips-chain { display:flex; align-items:center; gap:5px; flex-wrap:wrap; font-family:var(--font-mono); font-size:14px; }
     .tips-code { background:rgba(30,95,168,0.2); border:1px solid rgba(30,95,168,0.4); color:var(--text-accent); padding:1px 6px; border-radius:3px; }
     .tips-arrow-icon { color:var(--text-muted); opacity:0.5; }
-    .tips-label { color:var(--text-muted); opacity:0.5; font-size:9px; letter-spacing:0.08em; text-transform:uppercase; }
+    .tips-label { color:var(--text-muted); opacity:0.5; font-size:14px; letter-spacing:0.08em; text-transform:uppercase; }
     .tips-desc { font-size:14px; color:var(--text-muted); opacity:0.6; padding-left:2px; }
-    .abbrev-row { display:flex; gap:6px; align-items:baseline; padding:3px 0; border-bottom:1px solid var(--border); font-size:11px; line-height:1.4; }
+    .abbrev-row { display:flex; gap:6px; align-items:baseline; padding:3px 0; border-bottom:1px solid var(--border); font-size:14px; line-height:1.4; }
     .abbrev-row:last-child { border-bottom:none; }
-    .abbrev-code { font-family:var(--font-mono); color:var(--text-accent); flex-shrink:0; min-width:60px; font-size:10px; }
+    .abbrev-code { font-family:var(--font-mono); color:var(--text-accent); flex-shrink:0; min-width:60px; font-size:14px; }
     .abbrev-desc { color:var(--text-muted); opacity:0.7; }
     ::-webkit-scrollbar { width: 5px; }
     ::-webkit-scrollbar-track { background: transparent; }
