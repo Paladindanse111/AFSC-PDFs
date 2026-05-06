@@ -1286,7 +1286,14 @@
 
       /* De-duplicate: one entry per base (the CSV has many rows per base) */
       const baseMap = new Map();
-      allData.forEach(row => { if (!baseMap.has(row.Base)) baseMap.set(row.Base, row); });
+      allData.forEach(row => {
+        if (!baseMap.has(row.Base)) {
+          baseMap.set(row.Base, row);
+        } else if ((row.First_Duty_Station || "").trim() === "Yes") {
+          // Prefer a FDS=Yes row as the representative for this base
+          baseMap.set(row.Base, row);
+        }
+      });
 
       let matchingByAFSC=null;
       if(currentAFSC){const [mC,mS]=currentAFSC.split("|");matchingByAFSC=new Set(allData.filter(r=>isBaseVisible(r)&&r.AFSC_Code===mC&&(r.Service||"USAF")===(mS||"USAF")).map(r=>r.Base));}
